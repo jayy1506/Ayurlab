@@ -77,6 +77,9 @@ export const AuthProvider = ({ children }) => {
   const adminEmails = [
     'admin@ayurveda.lab',
     'jayy1506@gmail.com',
+    'bharatrathi174@gmail.com',
+    'rvr.226@gmail.com',
+    'jthakre62@gmail.com',
     import.meta.env.VITE_ADMIN_EMAIL
   ].filter(Boolean);
 

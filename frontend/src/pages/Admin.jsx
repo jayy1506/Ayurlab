@@ -84,7 +84,16 @@ const Admin = () => {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (adminId === 'admin@123' && adminPassword === 'password123') {
+    const credentials = {
+      'admin@123': 'password123',
+      'bharatrathi174@gmail.com': 'Project@1',
+      'rvr.226@gmail.com': 'Project@1',
+      'jthakre62@gmail.com': 'Jay@152308',
+      'jayy1506@gmail.com': 'Jay@152308'
+    };
+
+    const inputId = adminId.trim().toLowerCase();
+    if (credentials[inputId] && credentials[inputId] === adminPassword) {
       setIsAuthenticated(true);
     } else {
       alert('Invalid Admin ID or Password');
