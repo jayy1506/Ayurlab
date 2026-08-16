@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { auth, googleProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from '../services/firebase';
+import { auth, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from '../services/firebase';
 
 const AuthContext = createContext();
 
@@ -13,6 +13,18 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (!auth) return;
+
+    // Capture the redirect sign-in result when returning to the app (for mobile)
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          console.log("Successfully logged in via redirect:", result.user);
+        }
+      })
+      .catch((error) => {
+        console.error("Google Redirect Auth Error:", error);
+      });
+
     const unsubscribe = auth.onAuthStateChanged(user => {
       setCurrentUser(user);
       setLoading(false);
@@ -22,7 +34,13 @@ export const AuthProvider = ({ children }) => {
 
   const loginWithGoogle = async () => {
     if (isFirebaseEnabled && auth) {
-      return signInWithPopup(auth, googleProvider);
+      // Use redirect on mobile browsers (popup gets blocked), popup on desktop
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile) {
+        return signInWithRedirect(auth, googleProvider);
+      } else {
+        return signInWithPopup(auth, googleProvider);
+      }
     } else {
       setCurrentUser({ uid: 'mock-123', email: 'scholar@ayurveda.lab', displayName: 'Mock Scholar' });
       return Promise.resolve();
