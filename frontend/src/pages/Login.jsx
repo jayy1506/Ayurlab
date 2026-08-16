@@ -58,7 +58,7 @@ const Login = () => {
             <Sparkles size={32} />
           </div>
           <h2>{isLogin ? 'Welcome Back' : 'Join the Lab'}</h2>
-          <p className="text-muted" style={{ color: '#e2e8f0' }}>{isLogin ? 'Enter your details to access the lab.' : 'Sign up to start your journey.'}</p>
+          <p className="text-muted">{isLogin ? 'Enter your details to access the lab.' : 'Sign up to start your journey.'}</p>
         </div>
 
         {error && (
@@ -105,7 +105,7 @@ const Login = () => {
           Google
         </button>
 
-        <p className="toggle-auth text-muted" style={{ color: '#cbd5e1' }}>
+        <p className="toggle-auth text-muted">
           {isLogin ? "Don't have an account? " : "Already have an account? "}
           <span onClick={() => setIsLogin(!isLogin)} className="toggle-link">
             {isLogin ? 'Sign up' : 'Log in'}
