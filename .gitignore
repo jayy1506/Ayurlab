@@ -28,8 +28,3 @@ frontend/public/videos/
 scratch/
 practical_experiments/
 src/
-*.cjs
-*.mjs
-*.js
-!frontend/
-!backend/
