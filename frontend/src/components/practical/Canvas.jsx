@@ -266,8 +266,13 @@ const Canvas = () => {
             }}>
               {['powder', 'pill', 'liquid', 'paste'].includes(herbsInUtensil[0].form) ? (
                 <img 
-                  src={`/assets/products/${herbsInUtensil[0].form === 'powder' ? 'churna' : herbsInUtensil[0].form === 'pill' ? 'vati' : herbsInUtensil[0].form === 'liquid' ? 'taila' : 'avaleha'}.png`} 
+                  src={(() => {
+                    const base = import.meta.env.BASE_URL || '/';
+                    const path = `assets/products/${herbsInUtensil[0].form === 'powder' ? 'churna' : herbsInUtensil[0].form === 'pill' ? 'vati' : herbsInUtensil[0].form === 'liquid' ? 'taila' : 'avaleha'}.png`;
+                    return base.endsWith('/') ? `${base}${path}` : `${base}/${path}`;
+                  })()} 
                   alt={herbsInUtensil[0].name} 
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
                   style={{ width: '180px', height: '180px', objectFit: 'cover', borderRadius: '50%', border: '4px solid #10b981', boxShadow: '0 0 20px rgba(16,185,129,0.5)' }} 
                 />
               ) : (

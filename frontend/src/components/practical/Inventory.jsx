@@ -11,7 +11,16 @@ const iconMap = {
   Beaker:   <Beaker size={14} />
 };
 
+const getAssetUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
+  const base = import.meta.env.BASE_URL || '/';
+  const cleanPath = url.startsWith('/') ? url.slice(1) : url;
+  return base.endsWith('/') ? `${base}${cleanPath}` : `${base}/${cleanPath}`;
+};
+
 const DraggableItem = ({ item }) => {
+  const [imgError, setImgError] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `inv_${item.id}`,
     data: item
@@ -24,6 +33,8 @@ const DraggableItem = ({ item }) => {
     touchAction: 'none'
   };
 
+  const hasImage = Boolean(item.image) && !imgError;
+
   return (
     <div
       ref={setNodeRef}
@@ -33,15 +44,17 @@ const DraggableItem = ({ item }) => {
       className="inventory-item glass-panel"
       title={item.name}
     >
-      <div className="item-icon" style={{ width: '100%', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.3rem' }}>
-        {item.image ? (
+      <div className="item-icon" style={{ width: '100%', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.3rem', overflow: 'hidden' }}>
+        {hasImage ? (
           <img 
-            src={item.image} 
+            src={getAssetUrl(item.image)} 
             alt={item.name} 
-            style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '4px' }}
+            loading="lazy"
+            onError={() => setImgError(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '4px', display: 'block' }}
           />
         ) : (
-          iconMap[item.iconName] || <Leaf size={14} />
+          iconMap[item.iconName] || <Leaf size={22} color="#10b981" />
         )}
       </div>
       <div className="item-info">
