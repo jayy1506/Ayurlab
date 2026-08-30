@@ -19,7 +19,7 @@ const ICON_MAP = {
 const Dashboard = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  const userName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Ayurveda Scholar';
+  const userName = currentUser?.name || currentUser?.displayName || currentUser?.username || localStorage.getItem('ayurveda_user_name_' + (currentUser?.email || '').toLowerCase()) || (currentUser?.email ? currentUser.email.split('@')[0] : 'Ayurveda Scholar');
 
   const [activities, setActivities] = useState(() => getRecentActivities());
 

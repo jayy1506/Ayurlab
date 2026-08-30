@@ -8,6 +8,11 @@ dotenv.config(); // fallback to cwd .env
 
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
+import { connectDB } from "./config/db.js";
+import { seedAdmin } from "./utils/seedAdmin.js";
+import authRoutes from "./routes/authRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 import {
   defaultRateLimiter,
   aiRateLimiter,
@@ -19,8 +24,12 @@ const PORT = process.env.PORT || 5000;
 // Enable trust proxy for correct client IP detection behind proxies/reverse-proxies
 app.set("trust proxy", 1);
 
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true,
+}));
 app.use(express.json());
+app.use(cookieParser());
 
 // Request logging middleware for monitoring
 app.use((req, res, next) => {
@@ -38,12 +47,22 @@ app.get("/health", (req, res) => {
     status: "healthy",
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
+    collegeId: process.env.COLLEGE_ID || "COLLEGE_001",
     memoryUsage: process.memoryUsage(),
   });
 });
 
 // Apply global rate limiting to all requests
 app.use(defaultRateLimiter);
+
+// API Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
+
+// AI route with dedicated strict rate limiting
+app.post("/api/ai", aiRateLimiter, (req, res) => {
+  res.json({ message: "AI response placeholder" });
+});
 
 // Serve static files from the React frontend build
 app.use(express.static(path.join(__dirname, "../frontend/dist")));
@@ -54,11 +73,6 @@ app.get("/*splat", (req, res, next) => {
     return next();
   }
   res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
-});
-
-// AI route with dedicated strict rate limiting
-app.post("/api/ai", aiRateLimiter, (req, res) => {
-  res.json({ message: "AI response placeholder" });
 });
 
 // Centralized error handling middleware
@@ -90,15 +104,24 @@ const selfPing = () => {
 // Run ping every 10 minutes (600000 ms)
 if (process.env.RENDER_EXTERNAL_URL) {
   console.log("[Keep-Alive Robot]: Render environment detected. Initializing self-ping loop.");
-  // Send first ping after 1 minute, then every 10 minutes
   setTimeout(selfPing, 60000);
   setInterval(selfPing, 600000);
 }
 
-if (process.argv[1] && process.argv[1].endsWith("server.js")) {
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-}
+// Start Server and initialize Database & Seed Admin
+const startServer = async () => {
+  try {
+    await connectDB();
+    await seedAdmin();
+  } catch (err) {
+    console.error("[Server Startup Warning]: Database connection / admin seed encountered an issue:", err.message);
+  }
+
+  if (process.argv[1] && process.argv[1].endsWith("server.js")) {
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  }
+};
+
+startServer();
 
 export default app;
-
-

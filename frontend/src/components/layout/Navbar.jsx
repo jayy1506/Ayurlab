@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FlaskConical, BookOpen, Shield, HelpCircle, LogOut, Lock, LayoutDashboard } from 'lucide-react';
+import { FlaskConical, BookOpen, Shield, HelpCircle, LogOut, Lock, LayoutDashboard, KeyRound } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import './Navbar.css';
 
 const Navbar = () => {
-  const { currentUser, logout, isAdmin } = useAuth();
+  const { currentUser, logout, isAdmin, isFaculty, isFacultyOrAdmin } = useAuth();
   const { isExamMode, isLearningBlocked } = useData();
   const location = useLocation();
   const navigate = useNavigate();
@@ -48,9 +48,17 @@ const Navbar = () => {
     navigate('/help');
   };
 
+  const handleChangePasswordClick = () => {
+    setIsDropdownOpen(false);
+    navigate('/change-password');
+  };
+
   const getUserDisplayName = () => {
     if (!currentUser) return '';
+    if (currentUser.name) return currentUser.name;
     if (currentUser.displayName) return currentUser.displayName;
+    const cachedName = localStorage.getItem('ayurveda_user_name_' + (currentUser.email || '').toLowerCase());
+    if (cachedName) return cachedName;
     if (currentUser.email) return currentUser.email.split('@')[0];
     return 'Scholar';
   };
@@ -110,6 +118,13 @@ const Navbar = () => {
             </Link>
           </li>
         )}
+        {isFaculty && !isAdmin && (
+          <li>
+            <Link to="/faculty" className={`nav-item ${location.pathname === '/faculty' ? 'active' : ''}`}>
+              <Shield size={18} /> Faculty Portal
+            </Link>
+          </li>
+        )}
 
         {/* User Profile Avatar Icon with Dropdown Menu OR Login Button */}
         {currentUser ? (
@@ -135,29 +150,60 @@ const Navbar = () => {
                   </div>
                   <div className="dropdown-user-info">
                     <h4 className="dropdown-user-name">{getUserDisplayName()}</h4>
-                    <span className="dropdown-user-email">{currentUser.email || 'scholar@ayurveda.lab'}</span>
-                    <span className={`role-badge ${isAdmin ? 'admin' : 'scholar'}`}>
-                      {isAdmin ? '🛡️ Administrator' : '🌿 Ayurvedic Scholar'}
-                    </span>
+                    <span className="dropdown-user-email">{currentUser.email || 'scholar@college.edu'}</span>
+                    <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                      <span className={`role-badge ${isAdmin ? 'admin' : (isFaculty ? 'faculty' : 'scholar')}`}>
+                        {isAdmin ? '🛡️ Administrator' : (isFaculty ? '🎓 Faculty Instructor' : '🌿 Scholar')}
+                      </span>
+                      <span className="role-badge scholar" style={{ background: 'rgba(255, 255, 255, 0.08)' }}>
+                        {currentUser.collegeId || 'COLLEGE_001'}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="dropdown-divider"></div>
 
                 <div className="dropdown-links-list">
+                  {isAdmin ? (
+                    <button className="dropdown-item" onClick={() => { setIsDropdownOpen(false); navigate('/admin'); }}>
+                      <Shield size={16} className="dropdown-item-icon" />
+                      <div className="dropdown-item-text">
+                        <strong>Admin Dashboard</strong>
+                        <span>Student & Lab Management</span>
+                      </div>
+                    </button>
+                  ) : isFaculty ? (
+                    <button className="dropdown-item" onClick={() => { setIsDropdownOpen(false); navigate('/faculty'); }}>
+                      <Shield size={16} className="dropdown-item-icon" />
+                      <div className="dropdown-item-text">
+                        <strong>Faculty Portal</strong>
+                        <span>Experiments & Lab Controls</span>
+                      </div>
+                    </button>
+                  ) : (
+                    <button className="dropdown-item" onClick={() => { setIsDropdownOpen(false); navigate('/dashboard'); }}>
+                      <LayoutDashboard size={16} className="dropdown-item-icon" />
+                      <div className="dropdown-item-text">
+                        <strong>My Dashboard</strong>
+                        <span>Formulation progress</span>
+                      </div>
+                    </button>
+                  )}
+
+                  <button className="dropdown-item" onClick={handleChangePasswordClick}>
+                    <KeyRound size={16} className="dropdown-item-icon" />
+                    <div className="dropdown-item-text">
+                      <strong>Change Password</strong>
+                      <span>Update account credentials</span>
+                    </div>
+                  </button>
+
                   <button className="dropdown-item" onClick={handleHelpClick}>
                     <HelpCircle size={16} className="dropdown-item-icon help-icon" />
                     <div className="dropdown-item-text">
                       <strong>Help & FAQs</strong>
                       <span>Guides, ratios & policies</span>
-                    </div>
-                  </button>
-
-                  <button className="dropdown-item" onClick={() => { setIsDropdownOpen(false); navigate('/dashboard'); }}>
-                    <LayoutDashboard size={16} className="dropdown-item-icon" />
-                    <div className="dropdown-item-text">
-                      <strong>My Dashboard</strong>
-                      <span>Formulation progress</span>
                     </div>
                   </button>
                 </div>
@@ -168,7 +214,7 @@ const Navbar = () => {
                   <LogOut size={16} className="dropdown-item-icon logout-icon" />
                   <div className="dropdown-item-text">
                     <strong>Logout</strong>
-                    <span>Sign out of session</span>
+                    <span>Sign out of college session</span>
                   </div>
                 </button>
               </div>

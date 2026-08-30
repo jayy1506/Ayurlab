@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import learningPracticals from '../data/learningPracticals';
 
 const DataContext = createContext();
 
@@ -7,7 +8,7 @@ export const useData = () => useContext(DataContext);
 
 // Increment this whenever defaultInventoryItems or defaultRecipes change structurally.
 // It forces old cached localStorage to be discarded so fresh defaults load.
-const DATA_VERSION = '6.5';
+const DATA_VERSION = '7.0';
 
 const defaultExperiments = [
   {
@@ -6313,124 +6314,85 @@ export const DataProvider = ({ children }) => {
   }
 
   const [experiments, setExperiments] = useState(() => {
-    const saved = localStorage.getItem('ayurveda_experiments');
-    const initial = saved ? JSON.parse(saved) : defaultExperiments;
-
-    // Auto-patch: Ensure Sitopaladi Churna has the video URL even in old cached versions
-                    return initial.map(exp => {
-      if (exp.id === 1) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786380773/sitophaladi_churna_kqiek6.mp4" };
-      }
-      if (exp.id === 3) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786383637/agnitundi_vati_gpwakk.mp4" };
-      }
-      if (exp.id === 4) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438783/chitrakari_vati_hpb1mf.mp4" };
-      }
-      if (exp.id === 6) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438355/triphala_guggle_iukqhh.mp4" };
-      }
-      if (exp.id === 7) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786382481/kaishora_guggle_iiboe7.mp4" };
-      }
-      if (exp.id === 8) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786166262/phalavarti_l9jf2h.mp4" };
-      }
-      if (exp.id === 9) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786297249/chandrodaya_vati_ymedlv.mp4" };
-      }
-      if (exp.id === 10) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786439051/narikela_lavana_e8qifk.mp4" };
-      }
-      if (exp.id === 11) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786386255/Atasi_Upanaha_Preparation_Guide_720p_caption_hqpsqq.mp4" };
-      }
-      if (exp.id === 12) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438963/Preparation_of_Dashanasamskara_Churna_720p_caption_kuqhyt.mp4" };
-      }
-      if (exp.id === 13) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438540/Gandhaka_Malahara_Preparation_720p_caption_dvvj61.mp4" };
-      }
-      if (exp.id === 14) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438965/Dashanga_Lepa_Preparation_720p_caption_1_mbnwu1.mp4" };
-      }
-      if (exp.id === 15) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786386194/Mustadi_Pramathya_Preparation_Guide_720p_caption_evcy2f.mp4" };
-      }
-      if (exp.id === 16) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438955/Preparation_of_Shadanga_Paneeya_720p_caption_t8hx9s.mp4" };
-      }
-      if (exp.id === 17) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438537/Kharjuradi_Mantha_Preparation_720p_caption_sd7v7g.mp4" };
-      }
-      if (exp.id === 18) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786439047/Chincha_Panaka_Preparation_1080p_caption_peguzv.mp4" };
-      }
-      if (exp.id === 19) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786386609/Preparation_of_Chandana_Panaka_%E0%A4%9A%E0%A4%A8%E0%A5%8D%E0%A4%A6%E0%A4%A8_%E0%A4%AA%E0%A4%BE%E0%A4%A8%E0%A4%95__720p_caption_rcecnk.mp4" };
-      }
-      if (exp.id === 20) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438350/Preparation_of_Ghrita_Murchchhana_%E0%A4%98%E0%A5%83%E0%A4%A4_%E0%A4%AE%E0%A5%82%E0%A4%B0%E0%A5%8D%E0%A4%9A%E0%A5%8D%E0%A4%9B%E0%A4%A8%E0%A4%BE__720p_caption_m0t3tn.mp4" };
-      }
-      if (exp.id === 21) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786380740/tailamurchana_tw1feb.mp4" };
-      }
-      if (exp.id === 22) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438617/Triphala_Ghrita__Ancient_Preparation_1080p_caption_zkadfb.mp4" };
-      }
-      if (exp.id === 23) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786296724/Amrita_Ghrita_Ayurvedic_Preparation_Guide_1080p_opkkki.mp4" };
-      }
-      if (exp.id === 24) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786382728/kasheerbaila_taila_dqcexy.mp4" };
-      }
-      if (exp.id === 25) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786386824/Preparation_of_Arka_Taila_%E0%A4%85%E0%A4%B0%E0%A5%8D%E0%A4%95_%E0%A4%A4%E0%A5%88%E0%A4%B2__720p_caption_hjwtt2.mp4" };
-      }
-      if (exp.id === 26) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438464/vaasavaleha_syffc2.mp4" };
-      }
-      if (exp.id === 27) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438627/Preparation_of_Nimbu_Sharkara_720p_caption_mtpjbw.mp4" };
-      }
-      if (exp.id === 28) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786439287/Preparation_of_Kutaja_Ghana_720p_caption_efb6lg.mp4" };
-      }
-      if (exp.id === 29) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438603/Guduchi_Ghana_Preparation_1080p_caption_-_Copy_ezz3u1.mp4" };
-      }
-      if (exp.id === 30) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438641/Haridra_Khanda_Preparation_1080p_caption_1_xshr84.mp4" };
-      }
-      if (exp.id === 31) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786454941/Preparation_of_Narikela_Khanda_1080p_caption_gkkpsn.mp4" };
-      }
-      if (exp.id === 32) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786386798/Preparation_of_Ananda_Bhairava_Rasa_1080p_caption_-_Copy_rpp9fw.mp4" };
-      }
-      if (exp.id === 33) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786380848/Tribhuvana_Kirti_Rasa_Preparation_1080p_caption_1_wykaax.mp4" };
-      }
-      if (exp.id === 34) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786442055/Preparation_of_Rasa_Parpati_1080p_caption_fbspzh.mp4" };
-      }
-      if (exp.id === 35) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438577/Preparation_of_Shweta_Parpati_1080p_caption_cyut1m.mp4" };
-      }
-      if (exp.id === 36) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786442010/Preparation_of_Laghusutasekhara_Rasa_1080p_caption_-_Copy_vrfkma.mp4" };
-      }
-      if (exp.id === 37) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786442549/Navayas_Lauha_Preparation_Guide_1080p_caption_-_Copy_fphf22.mp4" };
-      }
-      if (exp.id === 38) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786442026/Preparation_of_Saptamrita_Lauha_1080p_caption_epo4ar.mp4" };
-      }
-      if (exp.id === 39) {
-        return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786297555/arka_lavana_nwoabf.mp4" };
-      }
+    // Map video URLs for default experiments
+    const patchedDefaults = defaultExperiments.map(exp => {
+      if (exp.id === 1) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786380773/sitophaladi_churna_kqiek6.mp4" };
+      if (exp.id === 3) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786383637/agnitundi_vati_gpwakk.mp4" };
+      if (exp.id === 4) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438783/chitrakari_vati_hpb1mf.mp4" };
+      if (exp.id === 6) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438355/triphala_guggle_iukqhh.mp4" };
+      if (exp.id === 7) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786382481/kaishora_guggle_iiboe7.mp4" };
+      if (exp.id === 8) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786166262/phalavarti_l9jf2h.mp4" };
+      if (exp.id === 9) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786297249/chandrodaya_vati_ymedlv.mp4" };
+      if (exp.id === 10) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786439051/narikela_lavana_e8qifk.mp4" };
+      if (exp.id === 11) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786386255/Atasi_Upanaha_Preparation_Guide_720p_caption_hqpsqq.mp4" };
+      if (exp.id === 12) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438963/Preparation_of_Dashanasamskara_Churna_720p_caption_kuqhyt.mp4" };
+      if (exp.id === 13) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438540/Gandhaka_Malahara_Preparation_720p_caption_dvvj61.mp4" };
+      if (exp.id === 14) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438965/Dashanga_Lepa_Preparation_720p_caption_1_mbnwu1.mp4" };
+      if (exp.id === 15) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786386194/Mustadi_Pramathya_Preparation_Guide_720p_caption_evcy2f.mp4" };
+      if (exp.id === 16) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438955/Preparation_of_Shadanga_Paneeya_720p_caption_t8hx9s.mp4" };
+      if (exp.id === 17) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438537/Kharjuradi_Mantha_Preparation_720p_caption_sd7v7g.mp4" };
+      if (exp.id === 18) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786439047/Chincha_Panaka_Preparation_1080p_caption_peguzv.mp4" };
+      if (exp.id === 19) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786386609/Preparation_of_Chandana_Panaka_%E0%A4%9A%E0%A4%A8%E0%A5%8D%E0%A4%A6%E0%A4%A8_%E0%A4%AA%E0%A4%BE%E0%A4%A8%E0%A4%95__720p_caption_rcecnk.mp4" };
+      if (exp.id === 20) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438350/Preparation_of_Ghrita_Murchchhana_%E0%A4%98%E0%A5%83%E0%A4%A4_%E0%A4%AE%E0%A5%82%E0%A4%B0%E0%A5%8D%E0%A4%9A%E0%A5%8D%E0%A4%9B%E0%A4%A8%E0%A4%BE__720p_caption_m0t3tn.mp4" };
+      if (exp.id === 21) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786380740/tailamurchana_tw1feb.mp4" };
+      if (exp.id === 22) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438617/Triphala_Ghrita__Ancient_Preparation_1080p_caption_zkadfb.mp4" };
+      if (exp.id === 23) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786296724/Amrita_Ghrita_Ayurvedic_Preparation_Guide_1080p_opkkki.mp4" };
+      if (exp.id === 24) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786382728/kasheerbaila_taila_dqcexy.mp4" };
+      if (exp.id === 25) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786386824/Preparation_of_Arka_Taila_%E0%A4%85%E0%A4%B0%E0%A5%8D%E0%A4%95_%E0%A4%A4%E0%A5%88%E0%A4%B2__720p_caption_hjwtt2.mp4" };
+      if (exp.id === 26) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438464/vaasavaleha_syffc2.mp4" };
+      if (exp.id === 27) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438627/Preparation_of_Nimbu_Sharkara_720p_caption_mtpjbw.mp4" };
+      if (exp.id === 28) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786439287/Preparation_of_Kutaja_Ghana_720p_caption_efb6lg.mp4" };
+      if (exp.id === 29) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438603/Guduchi_Ghana_Preparation_1080p_caption_-_Copy_ezz3u1.mp4" };
+      if (exp.id === 30) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438641/Haridra_Khanda_Preparation_1080p_caption_1_xshr84.mp4" };
+      if (exp.id === 31) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786454941/Preparation_of_Narikela_Khanda_1080p_caption_gkkpsn.mp4" };
+      if (exp.id === 32) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786386798/Preparation_of_Ananda_Bhairava_Rasa_1080p_caption_-_Copy_rpp9fw.mp4" };
+      if (exp.id === 33) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786380848/Tribhuvana_Kirti_Rasa_Preparation_1080p_caption_1_wykaax.mp4" };
+      if (exp.id === 34) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786442055/Preparation_of_Rasa_Parpati_1080p_caption_fbspzh.mp4" };
+      if (exp.id === 35) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786438577/Preparation_of_Shweta_Parpati_1080p_caption_cyut1m.mp4" };
+      if (exp.id === 36) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786442010/Preparation_of_Laghusutasekhara_Rasa_1080p_caption_-_Copy_vrfkma.mp4" };
+      if (exp.id === 37) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786442549/Navayas_Lauha_Preparation_Guide_1080p_caption_-_Copy_fphf22.mp4" };
+      if (exp.id === 38) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786442026/Preparation_of_Saptamrita_Lauha_1080p_caption_epo4ar.mp4" };
+      if (exp.id === 39) return { ...exp, videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1786297555/arka_lavana_nwoabf.mp4" };
       return exp;
     });
+
+    // Merge all 69 practicals from learningPracticals to ensure full catalogue availability
+    const seenTitles = new Set();
+    const fullCatalogue = [];
+
+    // 1. Add all from learningPracticals first (69 comprehensive syllabus practicals)
+    learningPracticals.forEach((p, idx) => {
+      const key = (p.title || '').trim().toLowerCase();
+      if (key && !seenTitles.has(key)) {
+        seenTitles.add(key);
+        fullCatalogue.push({
+          ...p,
+          id: p.id || `lp_${idx + 1}`,
+        });
+      }
+    });
+
+    // 2. Add any additional experiments from defaultExperiments if unique
+    patchedDefaults.forEach(exp => {
+      const key = (exp.title || '').trim().toLowerCase();
+      if (key && !seenTitles.has(key)) {
+        seenTitles.add(key);
+        fullCatalogue.push(exp);
+      }
+    });
+
+    // Check if saved state has full catalogue
+    const saved = localStorage.getItem('ayurveda_experiments');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length >= fullCatalogue.length) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+
+    return fullCatalogue;
   });
 
   const [inventoryItems, setInventoryItems] = useState(() => {

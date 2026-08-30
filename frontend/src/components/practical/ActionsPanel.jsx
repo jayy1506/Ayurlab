@@ -34,17 +34,17 @@ const ActionsPanel = () => {
       </p>
 
       {/* Action buttons */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.75rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginBottom: '0.75rem' }}>
         {ACTIONS.map(a => (
           <button
             key={a.id}
-            className="btn-outline action-btn"
+            className="lab-action-btn"
             onClick={() => applyAction(a.id)}
             disabled={!!currentAction}
             title={a.desc}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.45rem 0.7rem', fontSize: '0.75rem' }}
           >
-            {a.icon} {a.name}
+            <span className="lab-action-icon">{a.icon}</span>
+            <span className="lab-action-label">{a.name}</span>
           </button>
         ))}
       </div>
