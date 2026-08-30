@@ -29,6 +29,31 @@ const withTimeout = (promise, ms = 1500) => {
   ]);
 };
 
+// Generic authenticated API fetch helper to synchronize with backend MongoDB
+const apiFetch = async (path, options = {}) => {
+  try {
+    const token = localStorage.getItem('ayurveda_token');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(path, {
+      ...options,
+      headers,
+      credentials: 'include',
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    // Graceful offline fallback
+  }
+  return null;
+};
+
 // Local storage cache helpers for students
 export const getCachedStudents = () => {
   try {
@@ -80,11 +105,34 @@ export const setCachedStudents = (students) => {
   }
 };
 
-// Local storage cache helpers for faculty
+// Local storage cache helpers for faculty (Seeded with persistent default faculty)
 export const getCachedFaculty = () => {
   try {
     const raw = localStorage.getItem(FACULTY_CACHE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    let list = raw ? JSON.parse(raw) : [];
+    if (!list || list.length === 0) {
+      list = [
+        {
+          _id: 'fac_head_rasashastra',
+          id: 'fac_head_rasashastra',
+          name: 'Dr. V. K. Sharma',
+          email: 'faculty@college.edu',
+          facultyId: 'FAC_001',
+          role: 'faculty',
+          collegeId: DEFAULT_COLLEGE_ID,
+          isActive: true,
+          isDefaultPassword: false,
+          displayPassword: 'Faculty@123',
+          createdAt: '2026-08-26T10:00:00.000Z',
+          updatedAt: '2026-08-26T10:00:00.000Z',
+        }
+      ];
+      localStorage.setItem(FACULTY_CACHE_KEY, JSON.stringify(list));
+      localStorage.setItem('ayurveda_user_name_faculty@college.edu', 'Dr. V. K. Sharma');
+      localStorage.setItem('ayurveda_account_pass_faculty@college.edu', 'Faculty@123');
+      localStorage.setItem('ayurveda_pass_updated_faculty@college.edu', 'true');
+    }
+    return list;
   } catch (e) {
     return [];
   }
@@ -390,48 +438,65 @@ export const deleteStudentAccount = async (studentId) => {
 };
 
 /**
- * Fetch all Faculty accounts with persistent merge
+ * Fetch all Faculty accounts with persistent merge (Backend API + Firestore + Local Cache)
  */
 export const getFacultyList = async (collegeId = DEFAULT_COLLEGE_ID) => {
   const cached = getCachedFaculty();
 
   const fetchPromise = (async () => {
-    if (!db) return cached;
+    let remoteFaculty = [];
+
+    // 1. Try Backend MongoDB API first (/api/admin/faculty)
     try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('role', '==', 'faculty'));
-      const snap = await withTimeout(getDocs(q), 2200).catch(() => null);
-
-      if (snap && !snap.empty) {
-        const remoteFaculty = [];
-        snap.forEach((docSnap) => {
-          const data = docSnap.data();
-          remoteFaculty.push({
-            _id: docSnap.id,
-            id: docSnap.id,
-            ...data,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt || new Date().toISOString(),
-          });
-        });
-
-        const facultyMap = new Map();
-        remoteFaculty.forEach(f => {
-          if (f.email) facultyMap.set(f.email.toLowerCase().trim(), f);
-        });
-        cached.forEach(f => {
-          if (f.email) {
-            const key = f.email.toLowerCase().trim();
-            const remote = facultyMap.get(key);
-            facultyMap.set(key, { ...(remote || {}), ...f });
-          }
-        });
-
-        const merged = Array.from(facultyMap.values());
-        setCachedFaculty(merged);
-        return merged;
+      const apiRes = await withTimeout(apiFetch('/api/admin/faculty'), 1500).catch(() => null);
+      if (apiRes && apiRes.success && Array.isArray(apiRes.faculty) && apiRes.faculty.length > 0) {
+        remoteFaculty = apiRes.faculty.map(f => ({
+          _id: f._id || f.id,
+          id: f._id || f.id,
+          ...f,
+          createdAt: f.createdAt || new Date().toISOString(),
+        }));
       }
-    } catch (e) {
-      // Fallback to cache
+    } catch (e) {}
+
+    // 2. Try Firestore if available and MongoDB empty
+    if (remoteFaculty.length === 0 && db) {
+      try {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('role', '==', 'faculty'));
+        const snap = await withTimeout(getDocs(q), 2200).catch(() => null);
+
+        if (snap && !snap.empty) {
+          snap.forEach((docSnap) => {
+            const data = docSnap.data();
+            remoteFaculty.push({
+              _id: docSnap.id,
+              id: docSnap.id,
+              ...data,
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt || new Date().toISOString(),
+            });
+          });
+        }
+      } catch (e) {}
+    }
+
+    // 3. Merge without losing any local records
+    const facultyMap = new Map();
+    remoteFaculty.forEach(f => {
+      if (f.email) facultyMap.set(f.email.toLowerCase().trim(), f);
+    });
+    cached.forEach(f => {
+      if (f.email) {
+        const key = f.email.toLowerCase().trim();
+        const remote = facultyMap.get(key);
+        facultyMap.set(key, { ...(remote || {}), ...f });
+      }
+    });
+
+    const merged = Array.from(facultyMap.values());
+    if (merged.length > 0) {
+      setCachedFaculty(merged);
+      return merged;
     }
     return cached;
   })();
@@ -454,7 +519,7 @@ export const getFacultyList = async (collegeId = DEFAULT_COLLEGE_ID) => {
 };
 
 /**
- * Add a new Faculty account (Permanent Persistence)
+ * Add a new Faculty account (Permanent Persistence: Backend + Firestore + Local)
  */
 export const addFacultyAccount = async ({ name, email, facultyId = '', collegeId = DEFAULT_COLLEGE_ID }) => {
   const trimmedEmail = email.trim().toLowerCase();
@@ -467,12 +532,14 @@ export const addFacultyAccount = async ({ name, email, facultyId = '', collegeId
     throw new Error('A faculty member with this email address already exists');
   }
 
+  const assignedFacultyId = facultyId.trim() || `FAC_${Math.floor(100 + Math.random() * 900)}`;
+
   const newFacultyData = {
     _id: facultyDocId,
     id: facultyDocId,
     name: trimmedName,
     email: trimmedEmail,
-    facultyId: facultyId.trim() || `FAC_${Math.floor(100 + Math.random() * 900)}`,
+    facultyId: assignedFacultyId,
     role: 'faculty',
     collegeId,
     isActive: true,
@@ -492,7 +559,17 @@ export const addFacultyAccount = async ({ name, email, facultyId = '', collegeId
   // 2. Pre-create in Firebase Auth in background
   registerFirebaseStudent(trimmedEmail, DEFAULT_STUDENT_PASSWORD, trimmedName).catch(() => {});
 
-  // 3. Persist to Firestore in background
+  // 3. Persist to Backend MongoDB API
+  apiFetch('/api/admin/faculty', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: trimmedName,
+      email: trimmedEmail,
+      facultyId: assignedFacultyId,
+    }),
+  }).catch(() => {});
+
+  // 4. Persist to Firestore in background
   if (db) {
     (async () => {
       try {
@@ -554,6 +631,9 @@ export const toggleFacultyStatus = async (facultyId, isActive) => {
   const updated = cached.map(f => (f._id === facultyId || f.id === facultyId ? { ...f, isActive } : f));
   setCachedFaculty(updated);
 
+  // Update backend MongoDB
+  apiFetch(`/api/admin/faculty/${facultyId}/${isActive ? 'enable' : 'disable'}`, { method: 'PATCH' }).catch(() => {});
+
   if (db) {
     (async () => {
       try {
@@ -580,6 +660,9 @@ export const resetFacultyPass = async (facultyId) => {
   const updated = cached.map(f => (f._id === facultyId || f.id === facultyId ? { ...f, isDefaultPassword: true, displayPassword: DEFAULT_STUDENT_PASSWORD } : f));
   setCachedFaculty(updated);
 
+  // Reset in backend MongoDB
+  apiFetch(`/api/admin/faculty/${facultyId}/reset-password`, { method: 'POST' }).catch(() => {});
+
   if (db) {
     (async () => {
       try {
@@ -599,6 +682,9 @@ export const deleteFacultyAccount = async (facultyId) => {
   const cached = getCachedFaculty();
   const updated = cached.filter(f => f._id !== facultyId && f.id !== facultyId);
   setCachedFaculty(updated);
+
+  // Delete from backend MongoDB
+  apiFetch(`/api/admin/faculty/${facultyId}`, { method: 'DELETE' }).catch(() => {});
 
   if (db) {
     (async () => {

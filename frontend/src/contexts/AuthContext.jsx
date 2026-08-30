@@ -86,6 +86,10 @@ export const AuthProvider = ({ children }) => {
     // Check if user has already changed password previously
     const isPassAlreadyChanged = localStorage.getItem('ayurveda_pass_updated_' + email) === 'true' || isAdminEmail;
 
+    // Check if user is a known faculty member
+    const cachedFacultyList = getCachedFaculty();
+    const isKnownFaculty = cachedFacultyList.some(f => f.email && f.email.toLowerCase() === email);
+
     // Instant local profile constructed immediately (0ms)
     const instantProfile = {
       _id: firebaseUser.uid,
@@ -94,7 +98,7 @@ export const AuthProvider = ({ children }) => {
       email,
       name: resolvedName,
       displayName: resolvedName,
-      role: isAdminEmail ? 'admin' : 'student',
+      role: isAdminEmail ? 'admin' : (isKnownFaculty ? 'faculty' : 'student'),
       collegeId: DEFAULT_COLLEGE_ID,
       isActive: true,
       isDefaultPassword: !isPassAlreadyChanged,

@@ -248,3 +248,242 @@ export const resetStudentPassword = async (req, res) => {
     });
   }
 };
+
+// ==========================================
+// FACULTY CONTROLLERS (Persistent Database)
+// ==========================================
+
+// @desc   Get all faculty in the admin's college and summary stats
+// @route  GET /api/admin/faculty
+// @access Private (Admin only)
+export const getFaculty = async (req, res) => {
+  try {
+    const collegeId = req.user.collegeId;
+
+    const faculty = await User.find({
+      collegeId,
+      role: 'faculty',
+    }).sort({ createdAt: -1 });
+
+    const totalFaculty = faculty.length;
+    const activeFaculty = faculty.filter((f) => f.isActive).length;
+    const disabledFaculty = totalFaculty - activeFaculty;
+
+    return res.status(200).json({
+      success: true,
+      stats: {
+        totalFaculty,
+        activeFaculty,
+        disabledFaculty,
+      },
+      faculty,
+    });
+  } catch (error) {
+    console.error('[GetFaculty Error]:', error);
+    return res.status(500).json({
+      error: 'ServerError',
+      message: 'Failed to retrieve faculty list',
+    });
+  }
+};
+
+// @desc   Create a new faculty account
+// @route  POST /api/admin/faculty
+// @access Private (Admin only)
+export const createFaculty = async (req, res) => {
+  try {
+    const { name, email, facultyId } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({
+        error: 'BadRequest',
+        message: 'Faculty name and email are required',
+      });
+    }
+
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedFacultyId = (facultyId || '').trim() || `FAC_${Math.floor(100 + Math.random() * 900)}`;
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ email: trimmedEmail });
+    if (existingUser) {
+      return res.status(409).json({
+        error: 'DuplicateEmail',
+        message: 'A faculty member or user with this email address already exists',
+      });
+    }
+
+    const defaultPassword = process.env.DEFAULT_STUDENT_PASSWORD || 'Faculty@123';
+
+    const newFaculty = await User.create({
+      name: name.trim(),
+      email: trimmedEmail,
+      studentId: trimmedFacultyId, // mapped for legacy field
+      facultyId: trimmedFacultyId,
+      password: defaultPassword,
+      role: 'faculty',
+      collegeId: req.user.collegeId,
+      isActive: true,
+      isDefaultPassword: true,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Faculty member created successfully with default initial password',
+      faculty: newFaculty.toJSON(),
+    });
+  } catch (error) {
+    console.error('[CreateFaculty Error]:', error);
+    return res.status(500).json({
+      error: 'ServerError',
+      message: 'Failed to create faculty account',
+    });
+  }
+};
+
+// @desc   Disable a faculty account
+// @route  PATCH /api/admin/faculty/:id/disable
+// @access Private (Admin only)
+export const disableFaculty = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const faculty = await User.findOne({
+      _id: id,
+      collegeId: req.user.collegeId,
+      role: 'faculty',
+    });
+
+    if (!faculty) {
+      return res.status(404).json({
+        error: 'FacultyNotFound',
+        message: 'Faculty account not found in this college',
+      });
+    }
+
+    faculty.isActive = false;
+    await faculty.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Account for ${faculty.name} has been disabled`,
+      faculty: faculty.toJSON(),
+    });
+  } catch (error) {
+    console.error('[DisableFaculty Error]:', error);
+    return res.status(500).json({
+      error: 'ServerError',
+      message: 'Failed to disable faculty account',
+    });
+  }
+};
+
+// @desc   Enable a faculty account
+// @route  PATCH /api/admin/faculty/:id/enable
+// @access Private (Admin only)
+export const enableFaculty = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const faculty = await User.findOne({
+      _id: id,
+      collegeId: req.user.collegeId,
+      role: 'faculty',
+    });
+
+    if (!faculty) {
+      return res.status(404).json({
+        error: 'FacultyNotFound',
+        message: 'Faculty account not found in this college',
+      });
+    }
+
+    faculty.isActive = true;
+    await faculty.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Account for ${faculty.name} has been enabled`,
+      faculty: faculty.toJSON(),
+    });
+  } catch (error) {
+    console.error('[EnableFaculty Error]:', error);
+    return res.status(500).json({
+      error: 'ServerError',
+      message: 'Failed to enable faculty account',
+    });
+  }
+};
+
+// @desc   Delete a faculty account permanently
+// @route  DELETE /api/admin/faculty/:id
+// @access Private (Admin only)
+export const deleteFaculty = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const faculty = await User.findOneAndDelete({
+      _id: id,
+      collegeId: req.user.collegeId,
+      role: 'faculty',
+    });
+
+    if (!faculty) {
+      return res.status(404).json({
+        error: 'FacultyNotFound',
+        message: 'Faculty account not found in this college',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Faculty account for ${faculty.name} has been permanently deleted`,
+    });
+  } catch (error) {
+    console.error('[DeleteFaculty Error]:', error);
+    return res.status(500).json({
+      error: 'ServerError',
+      message: 'Failed to delete faculty account',
+    });
+  }
+};
+
+// @desc   Reset a faculty's password to default initial password
+// @route  POST /api/admin/faculty/:id/reset-password
+// @access Private (Admin only)
+export const resetFacultyPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const faculty = await User.findOne({
+      _id: id,
+      collegeId: req.user.collegeId,
+      role: 'faculty',
+    });
+
+    if (!faculty) {
+      return res.status(404).json({
+        error: 'FacultyNotFound',
+        message: 'Faculty account not found in this college',
+      });
+    }
+
+    const defaultPassword = process.env.DEFAULT_STUDENT_PASSWORD || 'Faculty@123';
+
+    faculty.password = defaultPassword;
+    faculty.isDefaultPassword = true;
+    await faculty.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Faculty password has been reset to default initial password (${defaultPassword})`,
+      faculty: faculty.toJSON(),
+    });
+  } catch (error) {
+    console.error('[ResetFacultyPassword Error]:', error);
+    return res.status(500).json({
+      error: 'ServerError',
+      message: 'Failed to reset faculty password',
+    });
+  }
+};

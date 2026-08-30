@@ -40,8 +40,33 @@ export const seedAdmin = async () => {
       }
     } else {
       console.log(`[SeedAdmin] Administrator account verified: ${existingAdmin.email}`);
-      return existingAdmin;
     }
+
+    // Seed default Faculty account so faculty is always present on restart
+    const facultyEmail = (process.env.DEFAULT_FACULTY_EMAIL || 'faculty@college.edu').toLowerCase().trim();
+    const existingFaculty = await User.findOne({ email: facultyEmail });
+    if (!existingFaculty) {
+      try {
+        const createdFaculty = await User.create({
+          name: 'Dr. V. K. Sharma',
+          email: facultyEmail,
+          studentId: 'FAC_001',
+          facultyId: 'FAC_001',
+          password: process.env.DEFAULT_FACULTY_PASSWORD || 'Faculty@123',
+          role: 'faculty',
+          collegeId,
+          isActive: true,
+          isDefaultPassword: false,
+        });
+        console.log(`[SeedAdmin] Initial Faculty created: ${createdFaculty.email}`);
+      } catch (fErr) {
+        if (fErr.code !== 11000) console.warn('[SeedAdmin] Faculty seed notice:', fErr.message);
+      }
+    } else {
+      console.log(`[SeedAdmin] Faculty account verified: ${existingFaculty.email}`);
+    }
+
+    return existingAdmin;
   } catch (error) {
     console.error('[SeedAdmin Error]:', error.message);
     throw error;
