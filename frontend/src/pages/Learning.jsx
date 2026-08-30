@@ -479,6 +479,7 @@ const Learning = () => {
       <TutorDrawer
         isOpen={isTutorOpen}
         onClose={() => setIsTutorOpen(false)}
+        currentExperiment={selectedExp}
       />
     </div>
   );

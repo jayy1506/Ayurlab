@@ -52,8 +52,11 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Apply global rate limiting to all requests
-app.use(defaultRateLimiter);
+// Serve static files from the React frontend build (exempt from API rate limits)
+app.use(express.static(path.join(__dirname, "../frontend/dist")));
+
+// Apply rate limiting strictly to /api routes
+app.use("/api", defaultRateLimiter);
 
 // API Routes
 app.use("/api/auth", authRoutes);
@@ -63,9 +66,6 @@ app.use("/api/admin", adminRoutes);
 app.post("/api/ai", aiRateLimiter, (req, res) => {
   res.json({ message: "AI response placeholder" });
 });
-
-// Serve static files from the React frontend build
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
 // Support React Router single-page application routing (wildcard redirect to index.html)
 app.get("/*splat", (req, res, next) => {

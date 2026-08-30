@@ -3,20 +3,27 @@ import { X, Bot } from 'lucide-react';
 import AITutor from '../learning/AITutor';
 import './TutorDrawer.css';
 
-const TutorDrawer = ({ isOpen, onClose }) => {
+const TutorDrawer = ({ isOpen, onClose, currentExperiment }) => {
   return (
     <div className={`tutor-drawer-overlay ${isOpen ? 'open' : ''}`} onClick={onClose}>
       <div className={`tutor-drawer-container ${isOpen ? 'open' : ''}`} onClick={e => e.stopPropagation()}>
         <div className="drawer-header">
           <div className="title-area">
             <Bot size={22} className="tutor-icon" />
-            <h2>Ayurvedic AI Tutor</h2>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Ayurvedic AI Tutor</h2>
+              {currentExperiment?.title && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--primary-color)', opacity: 0.9 }}>
+                  Focus: {currentExperiment.title}
+                </span>
+              )}
+            </div>
           </div>
           <button className="close-btn" onClick={onClose}><X size={24} /></button>
         </div>
         
         <div className="drawer-body">
-          <AITutor />
+          <AITutor currentExperiment={currentExperiment} />
         </div>
         
         <div className="drawer-footer">
