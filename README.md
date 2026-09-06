@@ -1,41 +1,43 @@
 # Ayurlab - AI-Powered Ayurvedic Virtual Laboratory & Research Platform 🌿🔬
 
-> **A Next-Generation Digital Laboratory and AI Tutor for BAMS Medical Students, Researchers, and Practitioners in *Rasashastra & Bhaishajya Kalpana* (Ayurvedic Pharmaceutical Sciences).**
+> **A Comprehensive Digital Laboratory, E-Library, and Intelligent AI Tutor for BAMS (Bachelor of Ayurvedic Medicine and Surgery) Scholars, Faculty, and Researchers in *Rasashastra & Bhaishajya Kalpana* (Ayurvedic Pharmaceutical Sciences).**
 
 ---
 
-## 📖 Executive Summary
+## 📖 Project Overview
 
-**Ayurlab** is an immersive, full-stack educational and simulation platform that bridges classical Ayurvedic pharmaceutical knowledge with cutting-edge artificial intelligence and modern web engineering. 
+**Ayurlab** is an interactive, full-stack educational and simulation platform designed to digitalize classical Ayurvedic pharmaceutical compounding. 
 
-Traditional Ayurvedic drug manufacturing requires strict adherence to classical texts (*Charaka Samhita*, *Sushruta Samhita*, *Rasa Tarangini*, *Sharangadhara Samhita*), precise heating temperatures (*Agni Pariksha*), multi-stage purification (*Shodhana*), and specific observation of completion signs (*Siddhi Lakshana*). Ayurlab replicates these physical laboratory environments digitally, pairing them with an intelligent, context-aware AI Tutor that guides students in real time.
+In traditional Ayurvedic medicine, formulating medicines requires strict adherence to classical texts (*Charaka Samhita*, *Sushruta Samhita*, *Rasa Tarangini*, *Sharangadhara Samhita*), precise ingredient proportions, multi-stage grinding (*Bhavana*), controlled heating (*Agni Pariksha*), and observation of traditional completion signs (*Siddhi Lakshana*). 
+
+Ayurlab provides an interactive virtual laboratory for students to practice compounding procedures, a comprehensive classical e-library, an intelligent AI Tutor with conversational memory, real-time activity tracking, and an administrative portal for faculty proctoring.
 
 ---
 
-## 🏛️ System Architecture Overview
+## 🏛️ System Architecture
 
 ```
                           ┌─────────────────────────────────────────────────────────┐
-                          │               AYURLAB CLIENT (React 18 + Vite)           │
+                          │               AYURLAB FRONTEND (React 18 + Vite)        │
                           ├─────────────────────────────────────────────────────────┤
-                          │  • Practical Virtual Lab (Simulations & Video Guides)   │
-                          │  • Theory Hub & Viva Assessment System                 │
-                          │  • Dashboard & Real-Time Student Activity Tracker       │
-                          │  • Faculty / Admin Management Portal                    │
-                          │  • Ayurvedic AI Tutor (ChatGPT-Style UI & Audio TTS)   │
+                          │  • Practical Virtual Lab (Drag & Drop Canvas + Proctor) │
+                          │  • Ayurvedic E-Library (SOPs, Shlokas & Cinema Videos)  │
+                          │  • Dashboard & Real-Time Activity Tracker (24-Hour Log) │
+                          │  • Faculty & Admin Management Portal                    │
+                          │  • Ayurvedic AI Tutor (ChatGPT UX, TTS Audio & Shimmer) │
                           │  • Tier 0 Cache: Browser SessionStorage (0ms Latency)   │
                           └────────────────────────────┬────────────────────────────┘
                                                        │
-                                        HTTPS / REST API Requests
+                                        REST API / HTTPS Requests
                                                        │
                                                        ▼
                           ┌─────────────────────────────────────────────────────────┐
                           │               EXPRESS.JS BACKEND ENGINE (Node ESM)      │
                           ├─────────────────────────────────────────────────────────┤
-                          │  • Auth & Role-Based Access Control (Admin/Faculty/User)│
+                          │  • JWT Auth & Role-Based Access Control (Admin/Faculty) │
                           │  • AI Multi-Key Failover Router (/api/ai/tutor)         │
                           │  • Tier 1 Cache: In-Memory Fast LRU (7-Day TTL)         │
-                          │  • Request Validation & Anti-Spam Rate Limiting         │
+                          │  • Exam Mode & Academic Integrity Lock Controller       │
                           └──────────────┬───────────────────────────┬──────────────┘
                                          │                           │
                    Cache Miss / Distributed Sync         Multi-Key API Pool (Rotation)
@@ -51,76 +53,111 @@ Traditional Ayurvedic drug manufacturing requires strict adherence to classical 
 
 ---
 
-## ✨ Complete Feature Breakdown
+## 🌟 Complete Feature Analysis (What Really Exists in Ayurlab)
 
-### 1. 🤖 Ayurvedic AI Tutor (ChatGPT Experience & Conversational Memory)
-- **ChatGPT-Style Sliding UI**: Minimalist header with sliding icon toggle button (`PanelLeft`), prominent `+ New chat` CTA, and persistent chat sessions under **"Recents"**.
-- **Multi-Turn Conversational Memory**: Full context retention across questions. If a user discusses *Sitopaladi Churna* and asks a follow-up like *"give 5 viva questions"*, *"what is its dosage?"*, or *"explain precautions"*, the AI automatically scopes the answer to *Sitopaladi Churna*.
+### 1. 🧪 Practical Virtual Laboratory (`/practical`)
+- **Drag-and-Drop Compounding Canvas**: Powered by `@dnd-kit/core`, allows students to drag utensils, raw herbs, minerals, and liquids directly onto an interactive laboratory workbench.
+- **Utensils & Inventory**: Includes authentic classical apparatus such as *Khalva Yantra* (Mortar & Pestle), heating vessels (*Patra*), liquids (*Kwatha*, *Taila*), and herbal powders.
+- **Precision Weight Measurement Modal**: Allows students to input exact weights (grams/milliliters) before adding ingredients to utensils.
+- **Action & Recipe Engine**: Triggers compounding actions such as Grinding (*Mardan*), Heating (*Paka/Agni*), Mixing, and *Bhavana* cycles.
+- **Exam Mode & Video Proctoring**: Integrated `CameraRecorder` and IndexedDB storage to capture student practical exam sessions for faculty evaluation.
+
+---
+
+### 2. 📚 Ayurvedic E-Library & Formulation SOPs (`/learning`)
+- **Category Filter System**: Browse formulations classified into classical pharmaceutical forms:
+  - 🌿 **Churna** (Fine Powders, e.g., *Sitopaladi Churna*, *Hingwastaka Churna*)
+  - 💊 **Vati / Gutika** (Pills & Tablets, e.g., *Agnitundi Vati*)
+  - 🟣 **Guggulu** (Resin-based formulations)
+  - 🧴 **Taila & Ghrita** (Medicated Oils and Clarified Butter preparations)
+  - 🏺 **Leha / Avaleha** (Confections & Pastes)
+  - 🧪 **Mineral / Lauha / Bhasma** (Processed mineral and metallic compounds)
+  - 💧 **Arka, Varti, Lavana, Kalpana**
+- **Comprehensive Formulation Cards**:
+  - 📜 **Classical Sanskrit Shloka & Reference**: Authentic classical verses with text attribution (*Charaka*, *Sushruta*, *Rasa Tarangini*).
+  - 🌿 **Ingredients & Proportions**: Exact ingredient breakdown with quantities.
+  - 🥣 **Required Apparatus**: Utensils and equipment list.
+  - 📋 **Method of Preparation**: Step-by-step Standard Operating Procedures (SOPs).
+  - ⚠️ **Precautions (*Savadhani*)**: Heating, handling, and safety measures.
+  - ✨ **Observations & Specifications**: Target organoleptic properties (Color, Odour, Consistency, *Siddhi Lakshana*).
+- **Cinema Mode Video Demonstrations**: High-definition video player modal for step-by-step physical laboratory preparation.
+- **Context-Aware AI Tutor Drawer**: Dedicated sliding assistant attached directly to the active formulation.
+
+---
+
+### 3. 🤖 Ayurvedic AI Tutor (ChatGPT-Style UI & Conversational Intelligence)
+- **ChatGPT Modern Layout**:
+  - Clean sliding sidebar button ([`PanelLeft`](file:///c:/Users/jthak/OneDrive/Attachments/Desktop/ayurveda/frontend/src/components/learning/AITutor.jsx#L518-L525) / `PanelLeftClose`) with zero clutter.
+  - Prominent **`+ New chat`** button and persistent history sessions under **"Recents"**.
+  - Dynamic user message bubbles (`width: fit-content; max-width: 80%`) preventing text stretching.
+  - Full-Page immersion toggle for focused research sessions.
+- **Multi-Turn Conversational Memory**:
+  - The AI maintains context across questions. When a student is viewing or discussing *Sitopaladi Churna* and asks a follow-up like *"give 5 viva questions"*, *"what is the dose?"*, or *"explain precautions"*, the AI automatically binds its response specifically to *Sitopaladi Churna*.
 - **Medical & Classical Formatting**:
-  - 🥇 **Ranked Badges**: Ranked breakdown of compounding stages, Lakshanas, and formulation steps.
-  - 📜 **Classical Citation Chips**: Embedded references to classical textbooks (*Rasa Tarangini*, *Charaka Samhita*).
-  - 💡 **Left-Accent Callout Quotes**: Highlighting crucial safety precautions (*Savadhani*) and classical insights.
-- **Built-in Action Toolbar**:
-  - 📋 **Copy to Clipboard** with instant toast feedback.
-  - 🔊 **Voice Narration (Text-to-Speech)** using the Web Speech API.
-  - 👍/👎 **Feedback Rating & Regeneration**: Allows students to regenerate or rate explanations.
-- **Active Search Wave & Shimmer Effects**: Dynamic gradient text shimmer, glowing sparkle icon, spinning loader, and animated skeleton bars during inference.
-- **Quick Topics Sidebar**: One-click quick prompts for *✦ Siddhi Lakshana*, *📖 Shloka & Source*, *🛡️ Precautions*, and *💊 Indications & Dose*.
-- **Immersion Modes**: Switchable between side-drawer widget and full-page focused workspace.
+  - 🥇 **Ranked Badges** (`🥇`, `🥈`, `🥉`, `4️⃣`, `5️⃣`) for prioritized preparation stages and *Siddhi Lakshanas*.
+  - 💡 **Left-Accent Callout Quotes** for critical clinical points and safety guidelines.
+  - 🏷️ **Classical Source Citation Chips** (`[G Rasa Tarangini]`, `[G Charaka Samhita]`).
+- **Interactive Action Toolbar**:
+  - 📋 **One-Click Copy** to clipboard.
+  - 🔊 **Read Aloud (Voice Narration)** using the Web Speech Synthesis API.
+  - 👍/👎 **Feedback Rating & Regeneration**.
+- **Active Wave Shimmer & Animated Search**:
+  - Shimmering gradient text (*"Generating insights from classical texts"*), pulsing star glow, spinning loader, and glowing skeleton bars during live response streaming.
+- **Quick Topics Sidebar**:
+  - ✦ **Siddhi Lakshana** (Signs of proper completion)
+  - 📖 **Shloka & Source** (Classical verse citations)
+  - 🛡️ **Precautions** (Heating & handling safety)
+  - 💊 **Indications & Dose** (Therapeutic uses & *Matra*)
 
 ---
 
-### 2. ⚡ Resilient Multi-Key Failover & 3-Tier Caching System
-- **High-Availability Key Rotation**: Automatically rotates across `GEMINI_KEY_1`, `GEMINI_KEY_2`, `GEMINI_KEY_3`, `GEMINI_KEY_4`, and `GEMINI_API_KEY`. If one key encounters a `429 Rate Limit` or `Quota Exhausted`, the engine seamlessly fails over to the next key without interrupting the student.
-- **Multi-Model Fallback**: Automatically tries `gemini-2.5-flash` first for blazing-fast streaming, falling back to `gemini-2.5-pro` if needed.
+### 4. ⚡ Resilient Multi-Key Failover & 3-Tier Caching System
+- **High-Availability Key Rotation**: Automatically rotates across `GEMINI_KEY_1`, `GEMINI_KEY_2`, `GEMINI_KEY_3`, `GEMINI_KEY_4`, and `GEMINI_API_KEY`. If one key hits rate limits (HTTP 429) or quota exhaustion, it instantly switches to the next available key with zero student interruption.
+- **Multi-Model Fallback**: Streams from `gemini-2.5-flash` first for speed, with automatic fallback to `gemini-2.5-pro`.
 - **3-Tier Zero-Latency Caching**:
-  1. **Tier 0 (Browser Cache)**: Repeated queries load instantly in `0ms` with 100% token savings.
-  2. **Tier 1 (Server LRU In-Memory)**: High-speed local cache for frequent student questions.
-  3. **Tier 2 (Upstash Redis Persistent Cache)**: Distributed 7-day TTL caching across cloud deployments.
-- **Direct Client-Side Fallback**: Direct client execution via `@google/genai` if the backend server is temporarily unreachable.
+  1. **Tier 0 (Browser SessionStorage)**: Instant 0ms response for repeated queries with 100% token savings.
+  2. **Tier 1 (Server In-Memory LRU Map)**: Rapid memory cache for frequent student inquiries.
+  3. **Tier 2 (Upstash Cloud Redis)**: Distributed persistent cloud cache with 7-day TTL (604,800s).
+- **Direct Client-Side Fallback**: Client-side execution via `@google/genai` if the backend server is unreachable.
 
 ---
 
-### 3. 🧪 Practical Virtual Lab (Simulations & Video Guides)
-- **Interactive Formulations**: Step-by-step pharmaceutical workflows for classical formulations including:
-  - *Sitopaladi Churna* (Pulverization, Sieve Standard #85, Sugar Matrix Ratio).
-  - *Hingwastaka Churna* (Ghee-fried Hingu preparation, Deepana-Pachana ratios).
-  - *Agnitundi Vati* (Purified Shuddha Kupilu, Shodhana, Bhavana cycles).
-- **Synchronized Video Demonstrations**: High-definition video guides with interactive checkpoints, component ratios, and practical lab tests.
-- **Safety & Quality Control**: Real-time validation of *Agni* heating stages, moisture limits, and storage standards.
+### 5. 📊 Scholar Dashboard & Real-Time Activity Tracking (`/dashboard`)
+- **Real-Time 24-Hour Activity Log**: Automatically tracks student actions:
+  - 🧪 Experiments simulated in the practical lab.
+  - 🤖 Questions asked to the AI Tutor.
+  - 🎥 Video guides watched.
+  - 📖 Formulations reviewed in the E-Library.
+- **Personalized Scholar Hub**: Displays user greeting, quick access platform cards, and relative timestamps.
 
 ---
 
-### 4. 📚 Theory Hub, Viva & Assessment Modules
-- **Classical Sanskrit Shloka Repository**: Authentic Sanskrit verses with English transliteration, literal meaning, and clinical significance.
-- **Viva-Voce Question Bank**: Interactive Q&A for BAMS university practical examinations.
-- **Formulation Cards**: Detailed breakdown of *Rasa*, *Guna*, *Virya*, *Vipaka*, *Prabhava*, *Dose*, and *Anupana* (adjuvants).
+### 6. 🛡️ Faculty & Administrator Management Portal (`/admin` & `/faculty`)
+- **Student Account Management**: Add student accounts, view active/disabled statuses, reset passwords, delete accounts, and search users.
+- **Faculty Account Management**: Assign roles, create faculty accounts, manage credentials, and toggle access.
+- **Experiment & SOP Management**: Add new classical formulations, descriptions, steps, and video URLs.
+- **Inventory & Recipe Manager**: Configure raw herbs, minerals, utensils, and mixing rules.
+- **Academic Integrity Lock (`isLearningBlocked`)**: Allows faculty/admins to temporarily lock the E-Library during practical examinations.
+- **Exam Mode & Proctoring Review**: Review recorded video submissions from student practical lab exams.
 
 ---
 
-### 5. 📊 Student Dashboard & Real-Time Activity Tracking
-- **Activity Tracker**: Automatically records student lab interactions, questions asked to AI, experiments simulated, and quizzes completed.
-- **Personalized Analytics**: Visual progress charts, recent session history, and time-spent metrics.
+## 🛠️ Complete Technical Stack
 
----
-
-### 6. 🛡️ Faculty & Administrator Portal
-- **Student Progress Monitoring**: Faculty can view batch analytics, completion percentages, and lab performance.
-- **Lab & Experiment Management**: Dynamic configuration of formulation guides and video attachments.
-- **User & Role Management**: Multi-tier role permissions (**Admin**, **Faculty**, **Student**) with secure JWT authentication.
-
----
-
-## 🛠️ Technology Stack
-
-| Layer | Technologies Used |
-|---|---|
-| **Frontend UI** | React 18, Vite, React Router 6, Lucide Icons, Custom Vanilla CSS Design System |
-| **State & Storage** | React Hooks, HTML5 SessionStorage / LocalStorage, Web Speech API |
-| **Backend API** | Node.js (ES Modules), Express.js, CORS, Dotenv |
-| **AI & LLM** | Google Gemini SDK (`@google/genai`), Google Gemini 2.5 Flash / Pro |
-| **Database & Cache** | Upstash Redis (Cloud REST SDK), In-Memory LRU Cache |
-| **Security & Auth** | JSON Web Tokens (JWT), Password Hashing, Multi-Key Dynamic Obfuscation |
+| Layer | Technology | Details |
+|---|---|---|
+| **Frontend Framework** | **React 18** + **Vite** | Single Page Application (SPA) with hot module replacement |
+| **Routing** | **React Router 6** | Role-protected routes (`ProtectedRoute`, `FacultyRoute`, `AdminRoute`) |
+| **Drag & Drop** | **@dnd-kit/core** | Sensors, collision detection, and drag overlays for virtual lab workbench |
+| **Styling & Design** | **Custom Vanilla CSS** | Glassmorphism design system, responsive grids, and CSS keyframe animations |
+| **Icons** | **Lucide React** | Consistent iconography across library, lab, and AI tutor |
+| **Audio / Speech** | **Web Speech API** | Client-side `SpeechSynthesisUtterance` for voice read-aloud |
+| **Backend Runtime** | **Node.js (ES Modules)** | Modern ECMAScript modules with top-level `dotenv/config` preloading |
+| **Backend Framework** | **Express.js 5** | RESTful endpoints, CORS middleware, error handling |
+| **AI / LLM Engine** | **Google Gemini SDK** | `@google/genai` (`gemini-2.5-flash`, `gemini-2.5-pro`) |
+| **Distributed Cache** | **Upstash Redis** | `@upstash/redis` REST SDK with 7-day TTL persistence |
+| **Authentication** | **JWT (JSON Web Tokens)** | Secure token authentication in `localStorage` and Authorization headers |
+| **Video Storage** | **IndexedDB / HTML5 Video** | Local video proctoring recordings and MP4 demonstration playback |
 
 ---
 
@@ -128,56 +165,60 @@ Traditional Ayurvedic drug manufacturing requires strict adherence to classical 
 
 ```
 ayurveda/
-├── frontend/                         # React + Vite Frontend
+├── frontend/                         # React 18 + Vite Frontend Application
 │   ├── src/
 │   │   ├── assets/                   # Images, diagrams, and herbal scenery
 │   │   ├── components/
-│   │   │   ├── auth/                 # Login & authentication modals
-│   │   │   ├── layout/               # Header, Footer, and Navbar
-│   │   │   ├── learning/             # AI Tutor (AITutor.jsx, AITutor.css)
-│   │   │   ├── practical/            # Lab simulation canvases & video player
-│   │   │   └── shared/               # TutorDrawer, Modals, Full-Page wrappers
-│   │   ├── contexts/                 # Auth & global state contexts
-│   │   ├── data/                     # Classical experiments, Shlokas & datasets
-│   │   ├── pages/                    # Home, Practical, Learning, Dashboard, Admin, Faculty, Help
-│   │   ├── services/                 # AI Client & Multi-Tier Cache (gemini.js)
-│   │   ├── utils/                    # Activity tracker & helper utilities
-│   │   ├── App.jsx                   # Application routing and theme provider
-│   │   └── main.jsx                  # React DOM entry point
+│   │   │   ├── auth/                 # ProtectedRoute, AdminRoute, FacultyRoute
+│   │   │   ├── layout/               # Navbar and Header components
+│   │   │   ├── learning/             # AI Tutor component (AITutor.jsx, AITutor.css)
+│   │   │   ├── practical/            # Drag & drop canvas, inventory, action panel, proctor
+│   │   │   └── shared/               # TutorDrawer, VideoModal, and full-page modals
+│   │   ├── contexts/                 # AuthContext, DataContext, SimulationContext
+│   │   ├── data/                     # Classical experiments dataset (learningPracticals.js)
+│   │   ├── pages/                    # Home, Learning, Practical, Dashboard, Admin, Faculty, Login
+│   │   ├── services/                 # AI client service (gemini.js), adminService.js
+│   │   ├── utils/                    # Activity tracker (activityTracker.js), db.js (IndexedDB)
+│   │   ├── App.jsx                   # Application routing and providers
+│   │   └── main.jsx                  # React DOM mount point
 │   ├── package.json
 │   └── vite.config.js
 │
-├── backend/                          # Express.js REST API Server
+├── backend/                          # Node.js + Express.js API Server
+│   ├── config/                       # Upstash Redis & database configurations
 │   ├── controllers/
-│   │   ├── adminController.js        # Admin & student management logic
-│   │   ├── aiController.js           # Multi-Key Failover, Redis & Memory Caching
-│   │   └── authController.js         # JWT Auth, Register, Login & Password Reset
+│   │   ├── adminController.js        # Student/Faculty CRUD & SOP management
+│   │   ├── aiController.js           # Multi-key failover pool, Redis & Memory caching
+│   │   └── authController.js         # JWT login, register, password change
+│   ├── middleware/                   # Auth & role verification middleware
+│   ├── models/                       # Data stores and schemas
 │   ├── routes/
-│   │   ├── adminRoutes.js            # Admin REST endpoints
+│   │   ├── adminRoutes.js            # /api/admin endpoints
 │   │   ├── aiRoutes.js               # POST /api/ai/tutor endpoint
-│   │   └── authRoutes.js             # Authentication endpoints
-│   ├── server.js                     # Main server entry with ESM dotenv preloading
+│   │   └── authRoutes.js             # /api/auth endpoints
+│   ├── utils/                        # Helper functions and utilities
+│   ├── server.js                     # Express server entry point
 │   └── package.json
 │
-├── practical_experiments/            # Laboratory documentation, SOPs & references
+├── README_EXPERIMENTS.md             # Formulation SOPs, classical references & scientific datasets
 ├── .env                              # Environment variables (API keys & Redis credentials)
-└── README.md                         # Master Documentation
+└── README.md                         # Project Master Documentation
 ```
 
 ---
 
-## ⚙️ Environment Variables Setup
+## ⚙️ Environment Variables Configuration
 
-Create a `.env` file in the root directory (or respective `backend/` and `frontend/` folders):
+Create a `.env` file in the root directory (or inside `backend/` and `frontend/`):
 
 ```env
-# Server Configuration
+# Server Port & Environment
 PORT=5000
 NODE_ENV=development
 
 # Distributed Redis Cache (Upstash)
-UPSTASH_REDIS_REST_URL=https://your-database.upstash.io
-UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
+UPSTASH_REDIS_REST_URL=https://your-upstash-redis.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_rest_token
 
 # Multi-Key Gemini API Pool (Backend Failover)
 GEMINI_KEY_1=AIzaSyYourKeyOne...
@@ -196,54 +237,38 @@ VITE_GEMINI_API_KEY=AIzaSyPrimary...
 
 ---
 
-## 🚀 Installation & Local Development
+## 🚀 Getting Started & Local Development
 
 ### 1. Prerequisites
-- **Node.js**: v18.0.0 or higher
-- **npm**: v7.0.0 or higher
+- **Node.js**: `v18.0.0` or higher
+- **npm**: `v7.0.0` or higher
 
-### 2. Install Dependencies
+### 2. Installation
+Install all dependencies across both frontend and backend workspaces:
 ```bash
-# Install dependencies for both frontend and backend workspaces
 npm install
 ```
 
-### 3. Run the Development Server
+### 3. Run Development Server
+Concurrently launch both frontend and backend dev servers:
 ```bash
-# Concurrently launch both frontend and backend
 npm run dev
 ```
 
-The application will be accessible at:
 - **Frontend App**: `http://localhost:5173` (or `http://localhost:5174`)
 - **Backend API**: `http://localhost:5000`
 
 ### 4. Build for Production
 ```bash
-# Build frontend bundle
-npm run build:frontend
-
-# Build & test full monorepo
+# Build frontend bundle across workspace
 npm run build
+
+# Or build frontend workspace specifically
+npm run build --workspace=frontend
 ```
 
 ---
 
-## 🧪 AI Prompt Engineering & Safety Boundaries
+## 📄 License & Academic Attribution
 
-The AI Tutor is governed by strict domain-specific prompt engineering:
-- **Domain Confinement**: Strictly restricted to Ayurveda, herbal medicine, traditional compounding (*Bhaishajya Kalpana & Rasashastra*), and laboratory chemistry. Unrelated inquiries are gracefully filtered out.
-- **Safety & Toxicity Alerts**: Formulations involving Schedule E-1 poisonous herbs (*Visha/Upavisha* such as *Vatsanabha*, *Kupilu*, *Bhallataka*) or heavy metals (*Parad*, *Gandhak*, *Abhrak*) mandate explicit purification warnings (*Shodhana* prerequisites).
-- **Context Preservation**: Multi-turn history is analyzed to dynamically inject previous formulation context into single-phrase follow-up questions.
-
----
-
-## 👥 Contributors & Acknowledgements
-
-Developed for academic and clinical research in Ayurvedic Medical Education, empowering students and researchers with cutting-edge digital pharmaceutical simulation.
-
----
-
-## 📄 License
-
-This project is licensed for educational, institutional, and research use.
+Developed for academic, clinical, and scientific research in Ayurvedic Medical Education (*BAMS*). All classical references are sourced from standard textbooks recognized by the National Commission for Indian System of Medicine (NCISM).
