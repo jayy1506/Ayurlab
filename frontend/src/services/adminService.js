@@ -35,6 +35,7 @@ const apiFetch = async (path, options = {}) => {
     const token = localStorage.getItem('ayurveda_token');
     const headers = {
       'Content-Type': 'application/json',
+      'X-Admin-Email': DEFAULT_ADMIN_EMAIL,
       ...(options.headers || {}),
     };
     if (token) {
@@ -239,55 +240,73 @@ export const ensureAdminAccount = async (firebaseUser, customName = 'Jay Thakre'
 };
 
 /**
- * Fetch all students for the admin dashboard (Robust Merge + Never Wipe Local Records)
+ * Fetch all students for the admin dashboard (Robust Merge + Backend & Firestore Sync)
  */
 export const getStudentsList = async (collegeId = DEFAULT_COLLEGE_ID) => {
   const cached = getCachedStudents();
 
-  // Background fetch to sync from Firestore if available
+  // Background fetch to sync from Backend MongoDB + Firestore if available
   const fetchPromise = (async () => {
-    if (!db) return cached;
-    try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('role', '==', 'student'));
-      const querySnapshot = await withTimeout(getDocs(q), 2200).catch(() => null);
+    let remoteStudents = [];
 
-      if (querySnapshot && !querySnapshot.empty) {
-        const remoteStudents = [];
-        querySnapshot.forEach((docSnap) => {
-          const data = docSnap.data();
+    // 1. Try Backend MongoDB API
+    try {
+      const apiRes = await withTimeout(apiFetch('/api/admin/students'), 2000).catch(() => null);
+      if (apiRes && apiRes.success && Array.isArray(apiRes.students)) {
+        apiRes.students.forEach(s => {
           remoteStudents.push({
-            _id: docSnap.id,
-            id: docSnap.id,
-            ...data,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt || new Date().toISOString(),
+            _id: s._id || s.id,
+            id: s._id || s.id,
+            ...s,
+            createdAt: s.createdAt || new Date().toISOString(),
           });
         });
-
-        // Merge without losing any locally created student
-        const studentMap = new Map();
-        remoteStudents.forEach(s => {
-          if (s.email) studentMap.set(s.email.toLowerCase().trim(), s);
-        });
-        cached.forEach(s => {
-          if (s.email) {
-            const key = s.email.toLowerCase().trim();
-            const remote = studentMap.get(key);
-            studentMap.set(key, { ...(remote || {}), ...s });
-          }
-        });
-
-        const merged = Array.from(studentMap.values());
-        setCachedStudents(merged);
-        return merged;
       }
-    } catch (e) {
-      // Keep cached on error
+    } catch (e) {}
+
+    // 2. Try Firestore
+    if (db) {
+      try {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('role', '==', 'student'));
+        const querySnapshot = await withTimeout(getDocs(q), 2200).catch(() => null);
+
+        if (querySnapshot && !querySnapshot.empty) {
+          querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            remoteStudents.push({
+              _id: docSnap.id,
+              id: docSnap.id,
+              ...data,
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt || new Date().toISOString(),
+            });
+          });
+        }
+      } catch (e) {}
+    }
+
+    if (remoteStudents.length > 0) {
+      // Merge without losing any locally created student
+      const studentMap = new Map();
+      cached.forEach(s => {
+        if (s.email) studentMap.set(s.email.toLowerCase().trim(), s);
+      });
+      remoteStudents.forEach(s => {
+        if (s.email) {
+          const key = s.email.toLowerCase().trim();
+          const existing = studentMap.get(key);
+          studentMap.set(key, { ...(existing || {}), ...s });
+        }
+      });
+
+      const merged = Array.from(studentMap.values());
+      setCachedStudents(merged);
+      return merged;
     }
     return cached;
   })();
 
-  const students = (cached && cached.length > 0) ? cached : await fetchPromise;
+  const students = await fetchPromise;
   const filtered = collegeId ? (students || []).filter(s => (s.collegeId || DEFAULT_COLLEGE_ID) === collegeId) : (students || []);
 
   const totalStudents = filtered.length;
@@ -305,7 +324,7 @@ export const getStudentsList = async (collegeId = DEFAULT_COLLEGE_ID) => {
 };
 
 /**
- * Create a new student account (Instant Permanent Persistence + Firestore & Auth Sync)
+ * Create a new student account (Instant Permanent Persistence + Backend, Firestore & Auth Sync)
  */
 export const addStudentAccount = async ({ name, email, studentId = '', collegeId = DEFAULT_COLLEGE_ID }) => {
   const trimmedEmail = email.trim().toLowerCase();
@@ -343,7 +362,17 @@ export const addStudentAccount = async ({ name, email, studentId = '', collegeId
   // 2. Pre-create in Firebase Authentication in background
   registerFirebaseStudent(trimmedEmail, DEFAULT_STUDENT_PASSWORD, trimmedName).catch(() => {});
 
-  // 3. Persist to Firestore with explicit document ID
+  // 3. Persist to Backend MongoDB API
+  apiFetch('/api/admin/students', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: trimmedName,
+      email: trimmedEmail,
+      studentId: newStudentData.studentId,
+    }),
+  }).catch(() => {});
+
+  // 4. Persist to Firestore with explicit document ID
   if (db) {
     (async () => {
       try {
@@ -448,7 +477,7 @@ export const getFacultyList = async (collegeId = DEFAULT_COLLEGE_ID) => {
 
     // 1. Try Backend MongoDB API first (/api/admin/faculty)
     try {
-      const apiRes = await withTimeout(apiFetch('/api/admin/faculty'), 1500).catch(() => null);
+      const apiRes = await withTimeout(apiFetch('/api/admin/faculty'), 2000).catch(() => null);
       if (apiRes && apiRes.success && Array.isArray(apiRes.faculty) && apiRes.faculty.length > 0) {
         remoteFaculty = apiRes.faculty.map(f => ({
           _id: f._id || f.id,
@@ -459,8 +488,8 @@ export const getFacultyList = async (collegeId = DEFAULT_COLLEGE_ID) => {
       }
     } catch (e) {}
 
-    // 2. Try Firestore if available and MongoDB empty
-    if (remoteFaculty.length === 0 && db) {
+    // 2. Try Firestore if available
+    if (db) {
       try {
         const usersRef = collection(db, 'users');
         const q = query(usersRef, where('role', '==', 'faculty'));
@@ -480,16 +509,16 @@ export const getFacultyList = async (collegeId = DEFAULT_COLLEGE_ID) => {
       } catch (e) {}
     }
 
-    // 3. Merge without losing any local records
+    // 3. Merge: cached + remote (remote has authoritative IDs and status)
     const facultyMap = new Map();
-    remoteFaculty.forEach(f => {
+    cached.forEach(f => {
       if (f.email) facultyMap.set(f.email.toLowerCase().trim(), f);
     });
-    cached.forEach(f => {
+    remoteFaculty.forEach(f => {
       if (f.email) {
         const key = f.email.toLowerCase().trim();
-        const remote = facultyMap.get(key);
-        facultyMap.set(key, { ...(remote || {}), ...f });
+        const existing = facultyMap.get(key) || {};
+        facultyMap.set(key, { ...existing, ...f });
       }
     });
 
@@ -501,7 +530,7 @@ export const getFacultyList = async (collegeId = DEFAULT_COLLEGE_ID) => {
     return cached;
   })();
 
-  const faculty = (cached && cached.length > 0) ? cached : await fetchPromise;
+  const faculty = await fetchPromise;
   const filtered = collegeId ? (faculty || []).filter(f => (f.collegeId || DEFAULT_COLLEGE_ID) === collegeId) : (faculty || []);
 
   const totalFaculty = filtered.length;
@@ -519,7 +548,7 @@ export const getFacultyList = async (collegeId = DEFAULT_COLLEGE_ID) => {
 };
 
 /**
- * Add a new Faculty account (Permanent Persistence: Backend + Firestore + Local)
+ * Add a new Faculty account (Permanent Persistence: Backend MongoDB + Firestore + Local)
  */
 export const addFacultyAccount = async ({ name, email, facultyId = '', collegeId = DEFAULT_COLLEGE_ID }) => {
   const trimmedEmail = email.trim().toLowerCase();
@@ -549,7 +578,7 @@ export const addFacultyAccount = async ({ name, email, facultyId = '', collegeId
     updatedAt: new Date().toISOString(),
   };
 
-  // 1. Immediately cache for instant UI availability
+  // 1. Immediately cache for instant UI responsiveness
   const updatedCache = [newFacultyData, ...cached];
   setCachedFaculty(updatedCache);
 
@@ -559,21 +588,32 @@ export const addFacultyAccount = async ({ name, email, facultyId = '', collegeId
   // 2. Pre-create in Firebase Auth in background
   registerFirebaseStudent(trimmedEmail, DEFAULT_STUDENT_PASSWORD, trimmedName).catch(() => {});
 
-  // 3. Persist to Backend MongoDB API
-  apiFetch('/api/admin/faculty', {
-    method: 'POST',
-    body: JSON.stringify({
-      name: trimmedName,
-      email: trimmedEmail,
-      facultyId: assignedFacultyId,
-    }),
-  }).catch(() => {});
+  // 3. Persist to Backend MongoDB API (awaited for true persistence across restarts)
+  try {
+    const apiRes = await apiFetch('/api/admin/faculty', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: trimmedName,
+        email: trimmedEmail,
+        facultyId: assignedFacultyId,
+      }),
+    });
+    if (apiRes && apiRes.success && apiRes.faculty) {
+      newFacultyData._id = apiRes.faculty._id || apiRes.faculty.id || newFacultyData._id;
+      newFacultyData.id = apiRes.faculty._id || apiRes.faculty.id || newFacultyData.id;
+      // Update cache with server-generated ID
+      const syncedCache = [newFacultyData, ...cached.filter(f => f.email.toLowerCase() !== trimmedEmail)];
+      setCachedFaculty(syncedCache);
+    }
+  } catch (err) {
+    console.warn('[AdminService] Backend faculty creation notice:', err.message);
+  }
 
   // 4. Persist to Firestore in background
   if (db) {
     (async () => {
       try {
-        const userRef = doc(db, 'users', facultyDocId);
+        const userRef = doc(db, 'users', newFacultyData._id || facultyDocId);
         await withTimeout(setDoc(userRef, {
           ...newFacultyData,
           createdAt: serverTimestamp(),

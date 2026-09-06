@@ -29,43 +29,53 @@ const UTENSIL_EMOJI = {
   tray:          '🗳️',
 };
 
-/* ── Action animation label map ─────────────────────────────────── */
+/* ── Action display labels ───────────────────────────────────────── */
 const ACTION_LABELS = {
-  grind:     '⚙️ Grinding to fine powder…',
-  sieve:     '🕸️ Sieving through cloth…',
-  heat:      '🔥 Heating on Mandagni…',
-  filter:    '🌊 Filtering decoction…',
-  mix:       '🔄 Mixing thoroughly…',
-  form_pills:'💊 Forming Vati / Varti…',
-  freeze:    '❄️ Cooling down…',
+  grind:      'Mardana (Grinding in Khalva Yantra)…',
+  heat:       'Paka / Agnidana (Applying Mandagni Heat)…',
+  sieve:      'Vastragalita (Sieving through fine cloth)…',
+  filter:     'Galana (Filtering the Decoction)…',
+  mix:        'Mishrana (Homogenizing mixture)…',
+  form_pills: 'Vati Nirmana (Rolling into Tablets)…',
 };
 
-/* ── Single herb card inside utensil ────────────────────────────── */
+/* ── Herb chip inside utensil ────────────────────────────────────── */
 const HerbChip = ({ herb, onRemove }) => {
   const visual = FORM_VISUALS[herb.form] || FORM_VISUALS.hard;
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.4rem',
-      padding: '0.3rem 0.5rem',
-      borderRadius: '20px',
-      background: visual.bg,
-      border: `1px solid ${visual.color}40`,
-      fontSize: '0.7rem',
-      color: visual.color,
-      position: 'relative',
-      animation: 'popIn 0.3s cubic-bezier(0.175,0.885,0.32,1.275)',
-    }}>
-      <span style={{ fontSize: '1rem' }}>{visual.emoji}</span>
-      <div>
-        <div style={{ fontWeight: 600, fontSize: '0.68rem' }}>{herb.name}</div>
-        <div style={{ fontSize: '0.6rem', opacity: 0.75 }}>{herb.amount}{herb.type === 'liquid' ? 'ml' : 'g'} · {visual.label}</div>
-      </div>
-      <button onClick={() => onRemove(herb.uniqueId)} style={{
-        background: 'none', border: 'none', cursor: 'pointer',
-        color: 'var(--error-color)', padding: '0 2px', lineHeight: 1, marginLeft: '2px'
-      }}>×</button>
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.35rem',
+        padding: '0.25rem 0.6rem',
+        borderRadius: '999px',
+        background: visual.bg,
+        border: `1px solid ${visual.color}40`,
+        color: 'var(--text-primary)',
+        fontSize: '0.78rem',
+        fontWeight: 500,
+        boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+      }}
+    >
+      <span>{visual.emoji}</span>
+      <span>{herb.name}</span>
+      {herb.amount && (
+        <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
+          ({herb.amount}{herb.unit || 'g'})
+        </span>
+      )}
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(herb.uniqueId); }}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          padding: 0, display: 'flex', alignItems: 'center',
+          color: 'var(--text-secondary)', marginLeft: '0.2rem',
+        }}
+        title="Remove herb"
+      >
+        <X size={12} />
+      </button>
     </div>
   );
 };

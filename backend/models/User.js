@@ -21,6 +21,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    facultyId: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     password: {
       type: String,
       required: [true, 'Password is required'],

@@ -1,4 +1,35 @@
+import mongoose from 'mongoose';
 import User from '../models/User.js';
+
+// Helper to build flexible, safe user lookup queries that never throw CastError
+const buildUserQuery = (id, role, collegeId) => {
+  const isMongoId = mongoose.Types.ObjectId.isValid(id);
+  const conditions = [];
+  if (isMongoId) {
+    conditions.push({ _id: id });
+  }
+  const cleanId = String(id || '').trim();
+  if (cleanId) {
+    conditions.push({ email: cleanId.toLowerCase() });
+    if (role === 'faculty') {
+      conditions.push({ facultyId: cleanId });
+      conditions.push({ studentId: cleanId });
+    } else {
+      conditions.push({ studentId: cleanId });
+    }
+  }
+
+  const query = {
+    $or: conditions.length > 0 ? conditions : [{ email: '__no_match__' }],
+    role,
+  };
+
+  if (collegeId) {
+    query.$and = [{ $or: [{ collegeId }, { collegeId: { $exists: false } }] }];
+  }
+
+  return query;
+};
 
 // @desc   Get all students in the admin's college and summary stats
 // @route  GET /api/admin/students
@@ -109,11 +140,7 @@ export const disableStudent = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const student = await User.findOne({
-      _id: id,
-      collegeId: req.user.collegeId,
-      role: 'student',
-    });
+    const student = await User.findOne(buildUserQuery(id, 'student', req.user?.collegeId));
 
     if (!student) {
       return res.status(404).json({
@@ -146,11 +173,7 @@ export const enableStudent = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const student = await User.findOne({
-      _id: id,
-      collegeId: req.user.collegeId,
-      role: 'student',
-    });
+    const student = await User.findOne(buildUserQuery(id, 'student', req.user?.collegeId));
 
     if (!student) {
       return res.status(404).json({
@@ -183,11 +206,7 @@ export const deleteStudent = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const student = await User.findOneAndDelete({
-      _id: id,
-      collegeId: req.user.collegeId,
-      role: 'student',
-    });
+    const student = await User.findOneAndDelete(buildUserQuery(id, 'student', req.user?.collegeId));
 
     if (!student) {
       return res.status(404).json({
@@ -216,11 +235,7 @@ export const resetStudentPassword = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const student = await User.findOne({
-      _id: id,
-      collegeId: req.user.collegeId,
-      role: 'student',
-    });
+    const student = await User.findOne(buildUserQuery(id, 'student', req.user?.collegeId));
 
     if (!student) {
       return res.status(404).json({
@@ -258,10 +273,10 @@ export const resetStudentPassword = async (req, res) => {
 // @access Private (Admin only)
 export const getFaculty = async (req, res) => {
   try {
-    const collegeId = req.user.collegeId;
+    const collegeId = req.user?.collegeId || process.env.COLLEGE_ID || 'COLLEGE_001';
 
     const faculty = await User.find({
-      collegeId,
+      $or: [{ collegeId }, { collegeId: { $exists: false } }],
       role: 'faculty',
     }).sort({ createdAt: -1 });
 
@@ -314,6 +329,7 @@ export const createFaculty = async (req, res) => {
     }
 
     const defaultPassword = process.env.DEFAULT_STUDENT_PASSWORD || 'Faculty@123';
+    const collegeId = req.user?.collegeId || process.env.COLLEGE_ID || 'COLLEGE_001';
 
     const newFaculty = await User.create({
       name: name.trim(),
@@ -322,7 +338,7 @@ export const createFaculty = async (req, res) => {
       facultyId: trimmedFacultyId,
       password: defaultPassword,
       role: 'faculty',
-      collegeId: req.user.collegeId,
+      collegeId,
       isActive: true,
       isDefaultPassword: true,
     });
@@ -348,11 +364,7 @@ export const disableFaculty = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const faculty = await User.findOne({
-      _id: id,
-      collegeId: req.user.collegeId,
-      role: 'faculty',
-    });
+    const faculty = await User.findOne(buildUserQuery(id, 'faculty', req.user?.collegeId));
 
     if (!faculty) {
       return res.status(404).json({
@@ -385,11 +397,7 @@ export const enableFaculty = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const faculty = await User.findOne({
-      _id: id,
-      collegeId: req.user.collegeId,
-      role: 'faculty',
-    });
+    const faculty = await User.findOne(buildUserQuery(id, 'faculty', req.user?.collegeId));
 
     if (!faculty) {
       return res.status(404).json({
@@ -422,11 +430,7 @@ export const deleteFaculty = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const faculty = await User.findOneAndDelete({
-      _id: id,
-      collegeId: req.user.collegeId,
-      role: 'faculty',
-    });
+    const faculty = await User.findOneAndDelete(buildUserQuery(id, 'faculty', req.user?.collegeId));
 
     if (!faculty) {
       return res.status(404).json({
@@ -455,11 +459,7 @@ export const resetFacultyPassword = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const faculty = await User.findOne({
-      _id: id,
-      collegeId: req.user.collegeId,
-      role: 'faculty',
-    });
+    const faculty = await User.findOne(buildUserQuery(id, 'faculty', req.user?.collegeId));
 
     if (!faculty) {
       return res.status(404).json({

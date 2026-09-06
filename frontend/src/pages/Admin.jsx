@@ -19,7 +19,8 @@ import {
   updateUserRole,
   toggleFacultyStatus,
   resetFacultyPass,
-  deleteFacultyAccount
+  deleteFacultyAccount,
+  getCachedFaculty
 } from '../services/adminService';
 import './Admin.css';
 
@@ -48,9 +49,25 @@ const Admin = () => {
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Faculty Management State
-  const [faculty, setFaculty] = useState([]);
-  const [facultyStats, setFacultyStats] = useState({ totalFaculty: 0, activeFaculty: 0, disabledFaculty: 0 });
+  // Faculty Management State (Initialized with persistent cached faculty)
+  const [faculty, setFaculty] = useState(() => {
+    try {
+      const cached = getCachedFaculty();
+      return Array.isArray(cached) ? cached : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [facultyStats, setFacultyStats] = useState(() => {
+    try {
+      const cached = getCachedFaculty();
+      const total = Array.isArray(cached) ? cached.length : 0;
+      const active = Array.isArray(cached) ? cached.filter(f => f.isActive !== false).length : 0;
+      return { totalFaculty: total, activeFaculty: active, disabledFaculty: total - active };
+    } catch (e) {
+      return { totalFaculty: 0, activeFaculty: 0, disabledFaculty: 0 };
+    }
+  });
   const [loadingFaculty, setLoadingFaculty] = useState(false);
   const [facultySearchTerm, setFacultySearchTerm] = useState('');
   const [showAddFacultyModal, setShowAddFacultyModal] = useState(false);
@@ -147,6 +164,13 @@ const Admin = () => {
     }
   };
 
+  // Always fetch students and faculty on initial mount to keep metric cards up to date
+  useEffect(() => {
+    fetchStudents();
+    fetchFaculty();
+  }, []);
+
+  // Re-fetch when switching tabs
   useEffect(() => {
     if (activeTab === 'students') {
       fetchStudents();
@@ -566,7 +590,7 @@ const Admin = () => {
             <GraduationCap size={28} />
           </div>
           <div className="summary-details">
-            <h3>{facultyStats.totalFaculty}</h3>
+            <h3>{facultyStats.totalFaculty || faculty.length}</h3>
             <p>Faculty Members</p>
           </div>
         </div>

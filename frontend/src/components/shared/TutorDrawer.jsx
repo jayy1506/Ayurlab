@@ -1,34 +1,23 @@
-import React from 'react';
-import { X, Bot } from 'lucide-react';
+import React, { useState } from 'react';
 import AITutor from '../learning/AITutor';
 import './TutorDrawer.css';
 
 const TutorDrawer = ({ isOpen, onClose, currentExperiment }) => {
+  const [isFullPage, setIsFullPage] = useState(false);
+
   return (
     <div className={`tutor-drawer-overlay ${isOpen ? 'open' : ''}`} onClick={onClose}>
-      <div className={`tutor-drawer-container ${isOpen ? 'open' : ''}`} onClick={e => e.stopPropagation()}>
-        <div className="drawer-header">
-          <div className="title-area">
-            <Bot size={22} className="tutor-icon" />
-            <div>
-              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Ayurvedic AI Tutor</h2>
-              {currentExperiment?.title && (
-                <span style={{ fontSize: '0.75rem', color: 'var(--primary-color)', opacity: 0.9 }}>
-                  Focus: {currentExperiment.title}
-                </span>
-              )}
-            </div>
-          </div>
-          <button className="close-btn" onClick={onClose}><X size={24} /></button>
-        </div>
-        
-        <div className="drawer-body">
-          <AITutor currentExperiment={currentExperiment} />
-        </div>
-        
-        <div className="drawer-footer">
-          <p>Traditional Knowledge • Modern Intelligence</p>
-        </div>
+      <div 
+        className={`tutor-drawer-container ${isOpen ? 'open' : ''} ${isFullPage ? 'full-page' : ''}`} 
+        onClick={e => e.stopPropagation()}
+      >
+        <AITutor 
+          currentExperiment={currentExperiment} 
+          isDrawer={true} 
+          onClose={onClose}
+          isFullPage={isFullPage}
+          onToggleFullPage={() => setIsFullPage(prev => !prev)}
+        />
       </div>
     </div>
   );

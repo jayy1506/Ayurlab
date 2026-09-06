@@ -1,8 +1,10 @@
+import "dotenv/config";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 dotenv.config(); // fallback to cwd .env
 
@@ -13,6 +15,7 @@ import { connectDB } from "./config/db.js";
 import { seedAdmin } from "./utils/seedAdmin.js";
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
 import {
   defaultRateLimiter,
   aiRateLimiter,
@@ -62,10 +65,8 @@ app.use("/api", defaultRateLimiter);
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 
-// AI route with dedicated strict rate limiting
-app.post("/api/ai", aiRateLimiter, (req, res) => {
-  res.json({ message: "AI response placeholder" });
-});
+// AI route with dedicated strict rate limiting and Redis caching
+app.use("/api/ai", aiRoutes);
 
 // Support React Router single-page application routing (wildcard redirect to index.html)
 app.get("/*splat", (req, res, next) => {
