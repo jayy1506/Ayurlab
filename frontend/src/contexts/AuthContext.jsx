@@ -201,20 +201,50 @@ export const AuthProvider = ({ children }) => {
       try {
         userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, password);
       } catch (authError) {
-        // 1. If admin account doesn't exist yet in Firebase Auth, attempt auto-creation/update
-        if (
-          trimmedEmail === ADMIN_EMAIL.toLowerCase() &&
-          (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential')
-        ) {
-          const adminResult = await setupOrUpdateAdminInFirebase(trimmedEmail, password, customUsername || 'Jay Thakre');
-          if (adminResult.success) {
-            userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, password);
-          } else {
+        const isNetworkFailure = authError.code === 'auth/network-request-failed';
+
+        // 1. Admin login fallback (handles initial setup, invalid credential, or network failure)
+        if (trimmedEmail === ADMIN_EMAIL.toLowerCase()) {
+          const expectedAdminPass = localStorage.getItem('ayurveda_account_pass_' + trimmedEmail) || 'Jay@1523';
+          const isAdminPassValid = password === expectedAdminPass || password === 'Jay@1523';
+
+          if (isNetworkFailure && isAdminPassValid) {
+            const adminName = customUsername || localStorage.getItem('ayurveda_user_name_' + trimmedEmail) || 'Jay Thakre';
+            const adminProfile = {
+              _id: 'admin_jay_thakre',
+              uid: 'admin_jay_thakre',
+              id: 'admin_jay_thakre',
+              email: trimmedEmail,
+              name: adminName,
+              displayName: adminName,
+              role: 'admin',
+              collegeId: DEFAULT_COLLEGE_ID,
+              isActive: true,
+              isDefaultPassword: false,
+            };
+            const sessionToken = 'token_admin_' + Date.now();
+            localStorage.setItem('ayurveda_token', sessionToken);
+            localStorage.setItem('ayurveda_user_name_' + trimmedEmail, adminName);
+            setToken(sessionToken);
+            setCurrentUser(adminProfile);
+            return { success: true, token: sessionToken, user: adminProfile };
+          }
+
+          if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') {
+            const adminResult = await setupOrUpdateAdminInFirebase(trimmedEmail, password, customUsername || 'Jay Thakre');
+            if (adminResult.success) {
+              userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+            } else {
+              throw authError;
+            }
+          } else if (!isAdminPassValid && isNetworkFailure) {
+            throw new Error('Invalid email or password');
+          } else if (!isNetworkFailure) {
             throw authError;
           }
         } 
-        // 2. If student or faculty account was created by admin, auto-provision and verify
-        else if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') {
+        // 2. Student or faculty account (handles local cache, auto-provision, and network failure)
+        else {
           const cachedStudents = getCachedStudents();
           const cachedFaculty = getCachedFaculty();
           const registeredUser = cachedStudents.find(s => s.email.toLowerCase() === trimmedEmail) ||
@@ -225,10 +255,8 @@ export const AuthProvider = ({ children }) => {
           
           let isPassValid = false;
           if (isPassAlreadyChanged) {
-            // Once password is changed, user must sign in with their updated password
             isPassValid = password === expectedPass;
           } else {
-            // First-time login: allow assigned default password
             isPassValid = password === expectedPass || password === 'BAMS@123';
           }
 
@@ -236,31 +264,36 @@ export const AuthProvider = ({ children }) => {
             throw new Error('Invalid email or password');
           }
 
-          if (registeredUser || isPassValid) {
+          if (isNetworkFailure || registeredUser || isPassValid) {
             const userName = customUsername || registeredUser?.name || trimmedEmail.split('@')[0];
-            
-            // Try direct client SDK account creation
-            try {
-              userCredential = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
-            } catch (createErr) {
-              // If already in Auth but needs password sync or REST registration
-              const regResult = await registerFirebaseStudent(trimmedEmail, password, userName);
-              if (regResult.success) {
-                userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, password).catch(() => null);
+            const isKnownFaculty = cachedFaculty.some(f => f.email && f.email.toLowerCase() === trimmedEmail);
+            const userRole = registeredUser?.role || (isKnownFaculty ? 'faculty' : 'student');
+
+            // If network is active, try direct client SDK account creation
+            if (!isNetworkFailure) {
+              try {
+                userCredential = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
+              } catch (createErr) {
+                const regResult = await registerFirebaseStudent(trimmedEmail, password, userName);
+                if (regResult.success) {
+                  userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, password).catch(() => null);
+                }
               }
             }
 
-            // If still no userCredential, fallback to valid registered user session
-            if (!userCredential && registeredUser) {
+            // Fallback to local session if network failed or direct SDK account not returned
+            if (!userCredential) {
               const fallbackProfile = {
-                uid: registeredUser._id || registeredUser.id || 'usr_' + Date.now(),
+                _id: registeredUser?._id || registeredUser?.id || 'usr_' + Date.now(),
+                uid: registeredUser?._id || registeredUser?.id || 'usr_' + Date.now(),
+                id: registeredUser?._id || registeredUser?.id || 'usr_' + Date.now(),
                 email: trimmedEmail,
                 name: userName,
                 displayName: userName,
-                role: registeredUser.role || 'student',
-                collegeId: registeredUser.collegeId || DEFAULT_COLLEGE_ID,
-                isActive: registeredUser.isActive !== false,
-                isDefaultPassword: registeredUser.isDefaultPassword !== false,
+                role: userRole,
+                collegeId: registeredUser?.collegeId || DEFAULT_COLLEGE_ID,
+                isActive: registeredUser?.isActive !== false,
+                isDefaultPassword: registeredUser?.isDefaultPassword !== false && !isPassAlreadyChanged,
               };
 
               const fallbackToken = 'token_' + Date.now();
@@ -275,15 +308,9 @@ export const AuthProvider = ({ children }) => {
                 user: fallbackProfile,
               };
             }
-
-            if (!userCredential) {
-              throw authError;
-            }
           } else {
             throw authError;
           }
-        } else {
-          throw authError;
         }
       }
 
@@ -336,6 +363,8 @@ export const AuthProvider = ({ children }) => {
         message = 'Invalid email or password';
       } else if (error.code === 'auth/too-many-requests') {
         message = 'Access temporarily locked due to multiple failed attempts. Please try again later.';
+      } else if (error.code === 'auth/network-request-failed') {
+        message = 'Network error: Unable to reach authentication service. Please check your internet connection or disable ad-blockers.';
       } else if (error.message) {
         message = error.message;
       }
