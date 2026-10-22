@@ -40,6 +40,19 @@ export const logUserActivity = ({ title, detail, type = 'practical', link = '/pr
     const updated = [newEntry, ...current].slice(0, 20);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 
+    // Asynchronously sync to backend MongoDB ActivityLog collection
+    fetch('/api/simulation/attempts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        practicalName: title,
+        feedback: detail,
+        score: 100,
+        passed: true,
+      }),
+    }).catch(() => {});
+
     // Dispatch global event for live reactive UI updates
     window.dispatchEvent(new Event('ayurveda_activity_updated'));
     return updated;

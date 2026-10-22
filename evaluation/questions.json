@@ -1,0 +1,94 @@
+{
+  "questions": [
+    {
+      "id": "q1",
+      "question": "What is the classical preparation method for Triphala Churna?",
+      "category": "procedure",
+      "expected_answer": "The preparation involves ... (placeholder)",
+      "expected_source": "Sharangadhara Samhita",
+      "expected_sections": ["Preparation Steps", "Ingredients"],
+      "verified_by": ""
+    },
+    {
+      "id": "q2",
+      "question": "List the ingredients of Trikatu Churna.",
+      "category": "ingredient",
+      "expected_answer": "Black pepper, long pepper, ginger ...",
+      "expected_source": "Bhaishajya Ratnavali",
+      "expected_sections": ["Ingredients List"],
+      "verified_by": ""
+    },
+    {
+      "id": "q3",
+      "question": "What temperature range defines Mridu Agni?",
+      "category": "quantity",
+      "expected_answer": "Less than 70°C",
+      "expected_source": "Charaka Samhita",
+      "expected_sections": ["Agni Classification"],
+      "verified_by": ""
+    },
+    {
+      "id": "q4",
+      "question": "Cite the classical reference for the Siddhi Lakshana of Sitopaladi Churna.",
+      "category": "citation",
+      "expected_answer": "Sharangadhara Samhita, Madhyama Khanda 6/12-14",
+      "expected_source": "Sharangadhara Samhita",
+      "expected_sections": ["Siddhi Lakshana"],
+      "verified_by": ""
+    },
+    {
+      "id": "q5",
+      "question": "Is there a toxicity warning for excessive use of Haridra?",
+      "category": "toxicity",
+      "expected_answer": "Yes, prolonged high dosage may cause ...",
+      "expected_source": "Sushruta Samhita",
+      "expected_sections": ["Safety"],
+      "verified_by": ""
+    },
+    {
+      "id": "q6",
+      "question": "How many steps are described for the preparation of Agnitundi Vati?",
+      "category": "procedure",
+      "expected_answer": "Eight steps",
+      "expected_source": "Bhaishajya Ratnavali",
+      "expected_sections": ["Procedure Steps"],
+      "verified_by": ""
+    },
+    {
+      "id": "q7",
+      "question": "What is the classical ratio for Brahmi Ghrita?",
+      "category": "quantity",
+      "expected_answer": "1 part Brahmi paste to 4 parts clarified butter",
+      "expected_source": "Charaka Samhita",
+      "expected_sections": ["Formulation Ratios"],
+      "verified_by": ""
+    },
+    {
+      "id": "q8",
+      "question": "Provide a citation for the safety precautions of Kshara Sutra.",
+      "category": "citation",
+      "expected_answer": "Sushruta Samhita, Chikitsa Sthana 17",
+      "expected_source": "Sushruta Samhita",
+      "expected_sections": ["Safety"],
+      "verified_by": ""
+    },
+    {
+      "id": "q9",
+      "question": "What is the recommended dosage of Triphala Churna for an adult?",
+      "category": "quantity",
+      "expected_answer": "3 grams twice daily",
+      "expected_source": "Ayurvedic Pharmacopoeia of India",
+      "expected_sections": ["Dosage"],
+      "verified_by": ""
+    },
+    {
+      "id": "q10",
+      "question": "Are there any known adverse effects of excessive Trikatu consumption?",
+      "category": "toxicity",
+      "expected_answer": "May cause gastric irritation at high doses",
+      "expected_source": "Charaka Samhita",
+      "expected_sections": ["Adverse Effects"],
+      "verified_by": ""
+    }
+  ]
+}

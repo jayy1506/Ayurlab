@@ -1,14 +1,19 @@
-# Ayurlab - AI-Powered Ayurvedic Virtual Laboratory & Research Platform 🌿🔬
+# Ayurlab - AI-Powered Ayurvedic Virtual Laboratory & Learning Platform 🌿🔬
 
-> **A Next-Generation Digital Laboratory and AI Tutor for BAMS Medical Students, Researchers, and Practitioners in *Rasashastra & Bhaishajya Kalpana* (Ayurvedic Pharmaceutical Sciences).**
+[![CI Status](https://github.com/jayy1506/Ayurlab/actions/workflows/ci.yml/badge.svg)](https://github.com/jayy1506/Ayurlab/actions)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](./package.json)
+[![Tests: 30 passing](https://img.shields.io/badge/tests-30%20passing-brightgreen.svg)](./tests)
+[![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)](./package.json)
+
+> **An Interactive Digital Simulation Laboratory and Generative AI Assistant for BAMS Medical Students, Researchers, and Practitioners in *Rasashastra & Bhaishajya Kalpana* (Ayurvedic Pharmaceutical Sciences).**
 
 ---
 
 ## 📖 Executive Summary
 
-**Ayurlab** is an immersive, full-stack educational and simulation platform that bridges classical Ayurvedic pharmaceutical knowledge with cutting-edge artificial intelligence and modern web engineering. 
+**Ayurlab** is a full-stack interactive virtual laboratory and educational platform designed to modernize Ayurvedic pharmaceutical training across the BAMS practical curriculum.
 
-Traditional Ayurvedic drug manufacturing requires strict adherence to classical texts (*Charaka Samhita*, *Sushruta Samhita*, *Rasa Tarangini*, *Sharangadhara Samhita*), precise heating temperatures (*Agni Pariksha*), multi-stage purification (*Shodhana*), and specific observation of completion signs (*Siddhi Lakshana*). Ayurlab replicates these physical laboratory environments digitally, pairing them with an intelligent, context-aware AI Tutor that guides students in real time.
+Traditional Ayurvedic drug preparation requires strict procedural adherence to classical texts (*Charaka Samhita*, *Sushruta Samhita*, *Rasa Tarangini*, *Sharangadhara Samhita*), precise thermal regulation (*Agni Pariksha*), multi-stage purification (*Shodhana*), and accurate observation of preparation endpoints (*Siddhi Lakshana*). Ayurlab replicates physical laboratory compounding through an interactive drag-and-drop & touch-accessible simulation canvas, video demonstrations, deterministic evaluation engines, in-browser MediaRecorder exam proctoring with privacy consent, and a context-aware RAG AI Tutor powered by Google Gemini.
 
 ---
 
@@ -16,89 +21,128 @@ Traditional Ayurvedic drug manufacturing requires strict adherence to classical 
 
 ```
                           ┌─────────────────────────────────────────────────────────┐
-                          │               AYURLAB CLIENT (React 18 + Vite)           │
+                          │               AYURLAB CLIENT (React 18 + Vite)          │
                           ├─────────────────────────────────────────────────────────┤
-                          │  • Practical Virtual Lab (Simulations & Video Guides)   │
-                          │  • Theory Hub & Viva Assessment System                 │
-                          │  • Dashboard & Real-Time Student Activity Tracker       │
-                          │  • Faculty / Admin Management Portal                    │
-                          │  • Ayurvedic AI Tutor (ChatGPT-Style UI & Audio TTS)   │
-                          │  • Tier 0 Cache: Browser SessionStorage (0ms Latency)   │
+                          │  • Interactive Canvas (Drag-and-Drop + Tap/Click Touch) │
+                          │  • Complete BAMS Practical Syllabus & Video Demonstrator│
+                          │  • Exam Mode with MediaRecorder Proctoring & Audit      │
+                          │  • Pre-Exam Privacy Consent & Supervised Alternative    │
+                          │  • Student Analytics Dashboard & Performance Curves     │
+                          │  • Faculty / Admin Management & Exam Review Portal      │
+                          │  • Bilingual Classical Sanskrit (देवनागरी) & English    │
+                          │  • Zero-Client-Key Architecture (Strict Backend Proxy)  │
                           └────────────────────────────┬────────────────────────────┘
                                                        │
-                                        HTTPS / REST API Requests
+                                        HTTPS / Dual-Token Cookie REST
                                                        │
                                                        ▼
                           ┌─────────────────────────────────────────────────────────┐
                           │               EXPRESS.JS BACKEND ENGINE (Node ESM)      │
                           ├─────────────────────────────────────────────────────────┤
-                          │  • Auth & Role-Based Access Control (Admin/Faculty/User)│
-                          │  • AI Multi-Key Failover Router (/api/ai/tutor)         │
-                          │  • Tier 1 Cache: In-Memory Fast LRU (7-Day TTL)         │
-                          │  • Request Validation & Anti-Spam Rate Limiting         │
+                          │  • Dual-Token Auth (15m Access Token, 7d Refresh Cookie)│
+                          │  • Security: Helmet, Strict CORS Whitelist, Rate Limit  │
+                          │  • Zod Request Validation Middleware                    │
+                          │  • Deterministic Simulation Evaluator (±5% Tolerance)   │
+                          │  • Multi-Part Streaming Video Upload (Local / AWS S3)   │
+                          │  • Automated 30-Day Recording Retention Cleanup Job     │
+                          │  • Structured JSON Application Logger                   │
+                          │  • Public Minimal Health Check (/health)                │
                           └──────────────┬───────────────────────────┬──────────────┘
                                          │                           │
-                   Cache Miss / Distributed Sync         Multi-Key API Pool (Rotation)
-                                         │                           │
+                   Domain Data & Cache   │                           │ RAG Retrieval & AI Guardrails
                                          ▼                           ▼
-                    ┌─────────────────────────┐       ┌───────────────────────────────┐
-                    │  UPSTASH REDIS CLOUD    │       │     GOOGLE GEMINI AI POOL     │
-                    │  (Tier 2 Persistent)    │       │ • gemini-2.5-flash            │
-                    │  • Key/Value JSON Cache │       │ • gemini-2.5-pro              │
-                    │  • 604,800s Expiry      │       │ • Keys 1..4 Dynamic Failover  │
-                    └─────────────────────────┘       └───────────────────────────────┘
+            ┌────────────────────────────────────────┐  ┌───────────────────────────────────────┐
+            │         PERSISTENT STORAGE TIER        │  │           AI & KNOWLEDGE TIER         │
+            ├────────────────────────────────────────┤  ├───────────────────────────────────────┤
+            │ • MongoDB Atlas (Users, Practicals,    │  │ • AI Safety Guardrails (108/112 Triage│
+            │   Attempts, Exam Logs, AI History)     │  │   Allopathic Blocker, Prompt Shield)  │
+            │ • Upstash Redis (High-Speed LLM Cache) │  │ • Classical Samhita RAG Retriever     │
+            │ • S3 / Local Media Storage (Exam Recs) │  │ • Google Gemini Dynamic Key Pool      │
+            └────────────────────────────────────────┘  └───────────────────────────────────────┘
 ```
 
 ---
 
-## ✨ Complete Feature Breakdown
+## ✨ Core Feature Modules
 
-### 1. 🤖 Ayurvedic AI Tutor (ChatGPT Experience & Conversational Memory)
-- **ChatGPT-Style Sliding UI**: Minimalist header with sliding icon toggle button (`PanelLeft`), prominent `+ New chat` CTA, and persistent chat sessions under **"Recents"**.
-- **Multi-Turn Conversational Memory**: Full context retention across questions. If a user discusses *Sitopaladi Churna* and asks a follow-up like *"give 5 viva questions"*, *"what is its dosage?"*, or *"explain precautions"*, the AI automatically scopes the answer to *Sitopaladi Churna*.
-- **Medical & Classical Formatting**:
-  - 🥇 **Ranked Badges**: Ranked breakdown of compounding stages, Lakshanas, and formulation steps.
-  - 📜 **Classical Citation Chips**: Embedded references to classical textbooks (*Rasa Tarangini*, *Charaka Samhita*).
-  - 💡 **Left-Accent Callout Quotes**: Highlighting crucial safety precautions (*Savadhani*) and classical insights.
-- **Built-in Action Toolbar**:
-  - 📋 **Copy to Clipboard** with instant toast feedback.
-  - 🔊 **Voice Narration (Text-to-Speech)** using the Web Speech API.
-  - 👍/👎 **Feedback Rating & Regeneration**: Allows students to regenerate or rate explanations.
-- **Active Search Wave & Shimmer Effects**: Dynamic gradient text shimmer, glowing sparkle icon, spinning loader, and animated skeleton bars during inference.
-- **Quick Topics Sidebar**: One-click quick prompts for *✦ Siddhi Lakshana*, *📖 Shloka & Source*, *🛡️ Precautions*, and *💊 Indications & Dose*.
-- **Immersion Modes**: Switchable between side-drawer widget and full-page focused workspace.
+### 1. 🧪 Laboratory Simulation Engine & Evaluator
+- **Dual Interaction Modes**: Full drag-and-drop plus **click/tap-to-place** touch fallback with WAI-ARIA keyboard navigation (`Enter` / `Space`) for mobile and assistive technology users.
+- **Classical Apparatus & Actions**: Simulates *Khalva Yantra* (Mortar & Pestle), *Dola Yantra*, *Kupi*, and crucible vessels with classical actions (*Mardana*, *Bhavana*, *Vastragalita*, *Agnidana*).
+- **Deterministic Evaluation Engine**: Validates student attempts against canonical Standard Operating Procedures:
+  - ±5% ingredient compounding weight tolerances.
+  - Required sequence verification.
+  - Temperature levels (*Mridu*, *Madhyama*, *Teekshna Agni*).
+  - Organoleptic endpoint gating (*Siddhi Lakshanas* such as *Rekhapurnatva*, *Varitara*, *Tantumatva*).
+- **Process Specification**: Complete faculty reference documented in [PRACTICAL_PROCESS_SPEC.md](./PRACTICAL_PROCESS_SPEC.md).
 
----
+### 2. 🛡️ Exam Mode with In-Browser MediaRecorder Proctoring
+- **Client-Side Media Capture**: Students complete compounding assessments under browser-native HTML5 `MediaRecorder` video capture (VP8/Opus WebM) running locally on the device — no continuous raw video streams leave the browser until explicit submission.
+- **Automated Anti-Cheat Auditing**: Tracks and timestamps window blur, tab switching, and fullscreen exit violations.
+- **Streaming Multi-Part Upload**: Supports exam video recordings up to 100MB via chunked streaming with automatic fallback from AWS S3 to local storage (`backend/utils/cloudStorage.js`).
+- **Faculty Review Dashboard**: Dedicated playback interface in [Faculty.jsx](./frontend/src/pages/Faculty.jsx) displaying synchronized video playback and violation event markers.
 
-### 2. ⚡ Resilient Multi-Key Failover & 3-Tier Caching System
-- **High-Availability Key Rotation**: Automatically rotates across `GEMINI_KEY_1`, `GEMINI_KEY_2`, `GEMINI_KEY_3`, `GEMINI_KEY_4`, and `GEMINI_API_KEY`. If one key encounters a `429 Rate Limit` or `Quota Exhausted`, the engine seamlessly fails over to the next key without interrupting the student.
-- **Multi-Model Fallback**: Automatically tries `gemini-2.5-flash` first for blazing-fast streaming, falling back to `gemini-2.5-pro` if needed.
-- **3-Tier Zero-Latency Caching**:
-  1. **Tier 0 (Browser Cache)**: Repeated queries load instantly in `0ms` with 100% token savings.
-  2. **Tier 1 (Server LRU In-Memory)**: High-speed local cache for frequent student questions.
-  3. **Tier 2 (Upstash Redis Persistent Cache)**: Distributed 7-day TTL caching across cloud deployments.
-- **Direct Client-Side Fallback**: Direct client execution via `@google/genai` if the backend server is temporarily unreachable.
+### 3. 🤖 AI Tutor with Clinical Safety Guardrails & Samhita RAG
+- **Zero Client-Key Exposure**: Complete isolation of AI credentials on the server.
+- **Safety & Emergency Triage**: Intercepts emergency queries with official medical helpline information (108 / 112 / 911), restricts allopathic prescribing, and defends against prompt injection attempts.
+- **Classical Samhita RAG**: Grounds responses with exact textual citations from *Charaka Samhita*, *Sushruta Samhita*, *Rasa Tarangini*, *Bhaishajya Ratnavali*, and *Sharangadhara Samhita*.
+- **Toxicity Warnings (Schedule E-1)**: Enforces mandatory *Shodhana* (purification) warnings when handling poisonous botanical or mineral agents (*Vatsanabha*, *Kupilu*, *Bhallataka*, *Hingula*, *Gandhaka*).
+- **Persistent Analytics & Ratings**: Records user interactions, response ratings, and feedback to MongoDB for faculty quality monitoring.
 
----
+### 4. 🌐 Classical Sanskrit & Bilingual i18n
+- **Devanagari & English Support**: Dynamic dictionary in [i18n.js](./frontend/src/utils/i18n.js) providing authentic Sanskrit terminology for classical equipment, compounding actions, and formulations.
+- **Instant Language Switcher**: Global navbar toggle (`EN` / `संस्कृत`) with persistent preferences and screen-reader status announcements.
 
-### 3. 🧪 Practical Virtual Lab (Simulations & Video Guides)
-- **Interactive Formulations**: Step-by-step pharmaceutical workflows for classical formulations including:
-  - *Sitopaladi Churna* (Pulverization, Sieve Standard #85, Sugar Matrix Ratio).
-  - *Hingwastaka Churna* (Ghee-fried Hingu preparation, Deepana-Pachana ratios).
-  - *Agnitundi Vati* (Purified Shuddha Kupilu, Shodhana, Bhavana cycles).
-- **Synchronized Video Demonstrations**: High-definition video guides with interactive checkpoints, component ratios, and practical lab tests.
-- **Safety & Quality Control**: Real-time validation of *Agni* heating stages, moisture limits, and storage standards.
+### 5. 🔒 Security & Access Control
+- **Dual-Token Authentication**: 15-minute `accessToken` paired with 7-day HTTP-only `refreshToken` cookies, automatic renewal, and brute-force protection.
+- **Strict Headers & Whitelisting**: Helmet security headers, fine-grained CORS origin whitelist, and anti-spam rate limiting.
+- **Strict Schema Validation**: Zod-powered request body and query parsing middleware.
 
 ---
 
-### 4. 📚 Theory Hub, Viva & Assessment Modules
-- **Classical Sanskrit Shloka Repository**: Authentic Sanskrit verses with English transliteration, literal meaning, and clinical significance.
-- **Viva-Voce Question Bank**: Interactive Q&A for BAMS university practical examinations.
-- **Formulation Cards**: Detailed breakdown of *Rasa*, *Guna*, *Virya*, *Vipaka*, *Prabhava*, *Dose*, and *Anupana* (adjuvants).
+## 🔒 Exam Recording Privacy & Retention
 
-### 6. 🛡️ Faculty & Administrator Portal
-- **Lab & Experiment Management**: Dynamic configuration of formulation guides and video attachments.
-- **User & Role Management**: Multi-tier role permissions (**Admin**, **Faculty**, **Student**) with secure JWT authentication.
+### 1️⃣ Pre-Exam Consent Screen
+- Students see a **consent modal** before the camera starts, explaining:
+  - **What is recorded**: Video, audio, tab switches, and timeline events during the practical.
+  - **Who can view it**: Authorized course faculty instructors and administrators only.
+  - **Retention duration**: 30 days maximum before automated deletion.
+- An explicit **checkbox** must be checked to proceed.
+- Consent data (`version`, `timestamp`, `consentGiven`) is stored on the `ExamAttempt` document.
+
+### 2️⃣ Retention Policy & Scheduled Cleanup
+- Configured via environment variable **`RECORDING_RETENTION_DAYS`** (default **30**).
+- A daily background scheduled job (`backend/jobs/recordingCleanup.js`) deletes recordings older than the retention period from AWS S3 or local uploads, clears the `recordingUrl`, and logs each deletion with structured metadata.
+
+### 3️⃣ Non-Blocking Alternative Path (Faculty-Supervised Exam)
+- If a student declines consent, they are **not blocked** from completing their coursework.
+- They are routed to the **Faculty-Supervised Examination Path**:
+  - **Direct Simulation (No Camera)**: Completes the compounding simulation with camera completely disabled; the session audit trail is submitted and flagged for manual faculty review.
+  - **In-Person Wet Lab**: Clear scheduling instructions for taking the practical during in-person department laboratory hours.
+
+### 4️⃣ Role-Based Course Ownership Restrictions
+- Recording files and attempt details are strictly accessible to **the faculty who created/owns the course** (`practical.createdBy`) and **administrators**.
+- Unauthorized faculty and student peers receive a **403 Forbidden** response.
+- Direct downloads from `/uploads/exam_recordings` are protected with authentication and role verification.
+
+---
+
+## 📸 Screenshots & Workflow Walkthrough
+
+| Module | Description |
+|---|---|
+| **Compounding Canvas** | Interactive laboratory workbench simulating classical vessels (*Khalva Yantra*), ingredient ratios, and heating stages (*Mridu/Madhyama/Teekshna Agni*). |
+| **Exam Proctoring HUD** | Floating exam timer, active proctoring status pill, live preview toggle, and advisory anti-cheat flags counter. |
+| **Privacy Consent Modal** | Pre-exam disclosure detailing data collection, authorized faculty access, and retention terms with an explicit agreement checkbox. |
+| **Faculty Timeline Review** | Video player synchronized with timestamped proctoring flags (tab switches, focus loss, fullscreen exits) for instructor sign-off. |
+| **Student Dashboard** | Performance trajectory, historical practical scores, organoleptic quality badges, and AI interaction history. |
+
+---
+
+## 🌐 Live Demo & Deployment Status
+
+- **Development Server**: `http://localhost:5173` (Frontend) & `http://localhost:5000` (Backend API).
+- **Production Container**: Production multi-stage Docker build served via Nginx / Express reverse proxy.
+- **Database Status**: MongoDB Atlas cluster with automatic index synchronization.
 
 ---
 
@@ -106,12 +150,13 @@ Traditional Ayurvedic drug manufacturing requires strict adherence to classical 
 
 | Layer | Technologies Used |
 |---|---|
-| **Frontend UI** | React 18, Vite, React Router 6, Lucide Icons, Custom Vanilla CSS Design System |
-| **State & Storage** | React Hooks, HTML5 SessionStorage / LocalStorage, Web Speech API |
-| **Backend API** | Node.js (ES Modules), Express.js, CORS, Dotenv |
-| **AI & LLM** | Google Gemini SDK (`@google/genai`), Google Gemini 2.5 Flash / Pro |
-| **Database & Cache** | Upstash Redis (Cloud REST SDK), In-Memory LRU Cache |
-| **Security & Auth** | JSON Web Tokens (JWT), Password Hashing, Multi-Key Dynamic Obfuscation |
+| **Frontend UI** | React 18, Vite, React Router 7, `@dnd-kit/core`, Lucide Icons, Custom Vanilla CSS |
+| **Accessibility & i18n** | WAI-ARIA live regions, bilingual Devanagari Sanskrit dictionary, Touch-tap controls |
+| **Backend API** | Node.js (ES Modules), Express.js, Helmet, CORS, Multer, Zod, Cookie-Parser |
+| **Testing & CI** | Vitest test runner (26 tests passing across auth, evaluator, safety, storage, privacy, and i18n) |
+| **AI & LLM** | Google Gemini SDK (`@google/genai`), Multi-Key failover pool, classical Samhita RAG |
+| **Database & Cache** | MongoDB Atlas (Mongoose), Upstash Redis (Distributed query caching) |
+| **Storage & Deployment** | AWS S3 / Local media storage fallback, Multi-stage Docker, Docker Compose |
 
 ---
 
@@ -119,122 +164,200 @@ Traditional Ayurvedic drug manufacturing requires strict adherence to classical 
 
 ```
 ayurveda/
-├── frontend/                         # React + Vite Frontend
+├── backend/                          # Express.js REST API Server
+│   ├── config/                       # Database connection configuration
+│   ├── controllers/                  # Auth, Admin, AI, Practical, Simulation & Exam controllers
+│   ├── jobs/                         # Background scheduled jobs (recording retention cleanup)
+│   ├── middleware/                   # Auth (cookie JWT), RateLimiter, Zod Validation
+│   ├── models/                       # User, Practical, SimulationAttempt, AIInteraction, ExamAttempt, ActivityLog
+│   ├── routes/                       # REST routes (/api/auth, /api/practicals, /api/simulation, /api/ai, /api/exam)
+│   ├── utils/                        # Evaluator, AI Safety, RAG Retriever, Storage, Logger, Seed scripts
+│   └── server.js                     # Server entrypoint with /health minimal probe
+│
+├── frontend/                         # React 18 + Vite Web Application
 │   ├── src/
-│   │   ├── assets/                   # Images, diagrams, and herbal scenery
-│   │   ├── components/
-│   │   │   ├── auth/                 # Login & authentication modals
-│   │   │   ├── layout/               # Header, Footer, and Navbar
-│   │   │   ├── learning/             # AI Tutor (AITutor.jsx, AITutor.css)
-│   │   │   ├── practical/            # Lab simulation canvases & video player
-│   │   │   └── shared/               # TutorDrawer, Modals, Full-Page wrappers
-│   │   ├── contexts/                 # Auth & global state contexts
-│   │   ├── data/                     # Classical experiments, Shlokas & datasets
-│   │   ├── pages/                    # Home, Practical, Learning, Dashboard, Admin, Faculty, Help
-│   │   ├── services/                 # AI Client & Multi-Tier Cache (gemini.js)
-│   │   ├── utils/                    # Activity tracker & helper utilities
-│   │   ├── App.jsx                   # Application routing and theme provider
-│   │   └── main.jsx                  # React DOM entry point
+│   │   ├── components/               # Auth, Layout, Practical (Canvas, Inventory, Camera), Shared
+│   │   ├── contexts/                 # AuthContext, SimulationContext, DataContext
+│   │   ├── data/                     # Expected process SOPs & syllabus data
+│   │   ├── pages/                    # Home, Practical, Dashboard, Faculty, Admin
+│   │   ├── services/                 # Backend API proxy client
+│   │   └── utils/                    # Bilingual i18n dictionary, Activity tracking, Evaluator
 │   ├── package.json
 │   └── vite.config.js
 │
-├── backend/                          # Express.js REST API Server
-│   ├── controllers/
-│   │   ├── adminController.js        # Admin & student management logic
-│   │   ├── aiController.js           # Multi-Key Failover, Redis & Memory Caching
-│   │   └── authController.js         # JWT Auth, Register, Login & Password Reset
-│   ├── routes/
-│   │   ├── adminRoutes.js            # Admin REST endpoints
-│   │   ├── aiRoutes.js               # POST /api/ai/tutor endpoint
-│   │   └── authRoutes.js             # Authentication endpoints
-│   ├── server.js                     # Main server entry with ESM dotenv preloading
-│   └── package.json
+├── tests/                            # Automated Vitest Test Suites (26 Tests)
+│   ├── auth.test.js                  # Authentication & dual-token security tests
+│   ├── evaluator.test.js             # Simulation evaluator & ±5% tolerance tests
+│   ├── i18n.test.js                  # Classical Sanskrit & bilingual dictionary tests
+│   ├── privacy.test.js               # Exam privacy consent, retention cleanup & access control
+│   ├── safety.test.js                # AI triage & clinical safety guardrails tests
+│   └── storage.test.js               # Multi-part cloud and local storage fallback tests
 │
-├── practical_experiments/            # Laboratory documentation, SOPs & references
-├── .env                              # Environment variables (API keys & Redis credentials)
+├── evaluation/                       # Samhita RAG Evaluation Harness
+│   └── questions.json                # Benchmark questions for RAG accuracy & citation recall
+│
+├── Dockerfile                        # Multi-stage production container
+├── docker-compose.yml                # Multi-service deployment specification
+├── PRACTICAL_PROCESS_SPEC.md         # Faculty SOP & process evaluation specification
+├── vitest.config.js                  # Root test runner configuration
+├── package.json                      # Monorepo scripts & dependencies
 └── README.md                         # Master Documentation
 ```
 
 ---
 
-## ⚙️ Environment Variables Setup
+## ⚙️ Environment Configuration
 
-Create a `.env` file in the root directory (or respective `backend/` and `frontend/` folders):
+Create a `.env` file in the root directory:
 
 ```env
 # Server Configuration
 PORT=5000
 NODE_ENV=development
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:3000
+
+# Authentication (Dual-Token JWT)
+JWT_SECRET=your_jwt_access_secret_key_here_min_32_chars
+JWT_REFRESH_SECRET=your_jwt_refresh_secret_key_here_min_32_chars
+COOKIE_SECRET=your_secure_cookie_signing_secret
+
+# MongoDB Atlas Database
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster0.mongodb.net/ayurlab?retryWrites=true&w=majority
 
 # Distributed Redis Cache (Upstash)
 UPSTASH_REDIS_REST_URL=https://your-database.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
 
-# Multi-Key Gemini API Pool (Backend Failover)
+# Google Gemini Multi-Key AI Pool (Backend Only - Never expose on client!)
 GEMINI_KEY_1=AIzaSyYourKeyOne...
 GEMINI_KEY_2=AIzaSyYourKeyTwo...
 GEMINI_KEY_3=AIzaSyYourKeyThree...
-GEMINI_KEY_4=AIzaSyYourKeyFour...
 GEMINI_API_KEY=AIzaSyPrimary...
 
-# Frontend Fallback Gemini API Keys (Vite)
-VITE_GEMINI_KEY_1=AIzaSyYourKeyOne...
-VITE_GEMINI_KEY_2=AIzaSyYourKeyTwo...
-VITE_GEMINI_KEY_3=AIzaSyYourKeyThree...
-VITE_GEMINI_KEY_4=AIzaSyYourKeyFour...
-VITE_GEMINI_API_KEY=AIzaSyPrimary...
+# Cloud Media & Exam Recording Storage (Optional - Defaults to local disk if omitted)
+STORAGE_TYPE=local
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your_aws_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret
+AWS_S3_BUCKET=ayurlab-exam-recordings
+RECORDING_RETENTION_DAYS=30  # Number of days to keep exam recordings (default: 30)
 ```
 
 ---
 
-## 🚀 Installation & Local Development
+## 🚀 Installation & Running Locally
 
 ### 1. Prerequisites
 - **Node.js**: v18.0.0 or higher
-- **npm**: v7.0.0 or higher
+- **npm**: v8.0.0 or higher
+- **MongoDB Atlas** or local MongoDB instance
 
 ### 2. Install Dependencies
 ```bash
-# Install dependencies for both frontend and backend workspaces
+# Install dependencies across all workspaces
 npm install
 ```
 
-### 3. Run the Development Server
+### 3. Seed Classical Practical Catalog (65 Formulations)
 ```bash
-# Concurrently launch both frontend and backend
+# Seeds syllabus with authentic Samhita SOPs and Siddhi Lakshanas
+npm run seed --workspace=backend
+```
+
+### 4. Run Development Servers
+```bash
+# Concurrently launch frontend (port 5173) and backend (port 5000)
 npm run dev
 ```
 
-The application will be accessible at:
-- **Frontend App**: `http://localhost:5173` (or `http://localhost:5174`)
-- **Backend API**: `http://localhost:5000`
-
-### 4. Build for Production
+### 5. Execute Automated Test Suites
 ```bash
-# Build frontend bundle
-npm run build:frontend
+# Run all Vitest suites (Evaluator, Safety, Auth, Storage, Privacy, i18n, Grading Visibility - 30 tests)
+npm test
+```
 
-# Build & test full monorepo
-npm run build
+### 6. Build Frontend for Production
+```bash
+npm run build --workspace=frontend
 ```
 
 ---
 
-## 🧪 AI Prompt Engineering & Safety Boundaries
+## 🐳 Docker Deployment
 
-The AI Tutor is governed by strict domain-specific prompt engineering:
-- **Domain Confinement**: Strictly restricted to Ayurveda, herbal medicine, traditional compounding (*Bhaishajya Kalpana & Rasashastra*), and laboratory chemistry. Unrelated inquiries are gracefully filtered out.
-- **Safety & Toxicity Alerts**: Formulations involving Schedule E-1 poisonous herbs (*Visha/Upavisha* such as *Vatsanabha*, *Kupilu*, *Bhallataka*) or heavy metals (*Parad*, *Gandhak*, *Abhrak*) mandate explicit purification warnings (*Shodhana* prerequisites).
-- **Context Preservation**: Multi-turn history is analyzed to dynamically inject previous formulation context into single-phrase follow-up questions.
+To build and run the entire application stack using Docker Compose:
+
+```bash
+# Build multi-stage production image and launch services
+docker compose up -d --build
+
+# View container logs
+docker compose logs -f
+
+# Verify container health
+curl http://localhost:5000/health
+```
 
 ---
 
-## 👥 Contributors & Acknowledgements
+## 🩺 System Health Diagnostics
 
-Developed for academic and clinical research in Ayurvedic Medical Education, empowering students and researchers with cutting-edge digital pharmaceutical simulation.
+The backend provides health diagnostic endpoints:
+
+### Public Health Check (`GET /health`)
+Minimal, high-availability public probe suitable for container orchestrators, load balancers, and keep-alive monitors:
+```json
+{
+  "status": "ok"
+}
+```
+
+### Admin Diagnostics (`GET /health/details`)
+Protected endpoint restricted to administrators providing detailed subsystem diagnostic status:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-10-21T19:50:00.000Z",
+  "database": {
+    "status": "connected",
+    "name": "ayurlab"
+  },
+  "redis": {
+    "status": "connected",
+    "type": "Upstash Cloud Redis"
+  },
+  "storage": {
+    "type": "local",
+    "status": "ready",
+    "retentionDays": 30
+  },
+  "process": {
+    "uptimeSeconds": 3600,
+    "memoryUsageMB": 68.4
+  }
+}
+```
 
 ---
 
-## 📄 License
+## ⚠️ Known Limitations
 
-This project is licensed for educational, institutional, and research use.
+1. **Client-Side Face Presence**: In-browser face detection models run locally on the client's WebAssembly/WebGL thread. Detection accuracy depends on student ambient lighting, camera resolution, and unobstructed facial visibility.
+2. **Discrete Thermal Simulation**: Formulation heating curves simulate canonical temperature bands (*Mridu/Madhyama/Teekshna Agni*) using discrete thermodynamic state transitions rather than continuous fluid dynamic simulations.
+3. **Local Media Fallback in Containers**: When running in ephemeral container environments (e.g. Render, Heroku) without S3 credentials, local uploads stored in `uploads/` are non-persistent across redeployments. AWS S3 configuration is recommended for production persistence.
+
+---
+
+## ⚖️ Educational-Use Disclaimer
+
+**Ayurlab is engineered exclusively for academic training, laboratory education, and research simulations within the accredited BAMS (*Bachelor of Ayurvedic Medicine and Surgery*) medical curriculum.**
+
+- Compounding calculations, Siddhi Lakshana simulations, and AI tutor outputs are designed for didactic learning and laboratory preparation only.
+- The platform **does not** provide medical diagnosis, clinical consultation, or direct patient prescribing guidance.
+- Any medicinal formulations containing classical poisonous plants or heavy metals (*Schedule E-1*) must adhere to the Drugs and Cosmetics Act (1940) and should only be prepared in physical laboratories under licensed Ayurvedic pharmacy supervision.
+
+---
+
+## 📄 License & Attribution
+
+Ayurlab is open-source academic software licensed under the **ISC License**. Developed for the preservation and digital advancement of Ayurvedic Pharmaceutical Sciences (*Rasashastra & Bhaishajya Kalpana*).

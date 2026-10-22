@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FlaskConical, BookOpen, Shield, HelpCircle, LogOut, Lock, LayoutDashboard, KeyRound } from 'lucide-react';
+import { FlaskConical, BookOpen, Shield, HelpCircle, LogOut, Lock, LayoutDashboard, KeyRound, Languages } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
+import { getLanguage, setLanguage } from '../../utils/i18n';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -12,6 +13,7 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [currentLang, setCurrentLang] = useState(() => getLanguage());
   const dropdownRef = useRef(null);
 
   // Close dropdown on outside click
@@ -125,6 +127,24 @@ const Navbar = () => {
             </Link>
           </li>
         )}
+
+        {/* Sanskrit & English Script Toggle */}
+        <li>
+          <button
+            type="button"
+            className="lang-toggle-btn"
+            onClick={() => {
+              const next = currentLang === 'en' ? 'sa' : 'en';
+              setCurrentLang(next);
+              setLanguage(next);
+            }}
+            title={currentLang === 'en' ? 'Switch to Sanskrit (Devanagari)' : 'Switch to English'}
+            aria-label="Toggle language between English and Sanskrit"
+          >
+            <Languages size={15} />
+            <span>{currentLang === 'en' ? 'संस्कृत' : 'English'}</span>
+          </button>
+        </li>
 
         {/* User Profile Avatar Icon with Dropdown Menu OR Login Button */}
         {currentUser ? (

@@ -34,9 +34,10 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['admin', 'faculty', 'student'],
+      enum: ['admin', 'faculty', 'student', 'ADMIN', 'FACULTY', 'STUDENT'],
       default: 'student',
       required: true,
+      set: (v) => (typeof v === 'string' ? v.toLowerCase() : v),
     },
     collegeId: {
       type: String,
@@ -51,6 +52,11 @@ const userSchema = new mongoose.Schema(
     isDefaultPassword: {
       type: Boolean,
       default: true,
+    },
+    refreshToken: {
+      type: String,
+      select: false,
+      default: null,
     },
   },
   {

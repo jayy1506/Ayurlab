@@ -1,17 +1,17 @@
+import React, { useState, useEffect } from 'react';
 import { useSimulation } from '../../contexts/useSimulation';
 import { Flame, Snowflake, RotateCw, Cog, Clock, Filter, Columns, Pill, AlertOctagon, CheckCircle } from 'lucide-react';
+import { t, getLanguage } from '../../utils/i18n';
 
 const ACTIONS = [
-  { id: 'grind',      name: 'Grind (Mardana)',    icon: <Cog size={15} />,      desc: 'Powder the dry herbs' },
-  { id: 'sieve',      name: 'Sieve (Vastragala)',  icon: <Columns size={15} />,  desc: 'Sieve through fine cloth' },
-  { id: 'heat',       name: 'Heat (Agni Paka)',    icon: <Flame size={15} />,    desc: 'Apply Mandagni heat' },
-  { id: 'filter',     name: 'Filter (Kvatha)',     icon: <Filter size={15} />,   desc: 'Filter the decoction' },
-  { id: 'mix',        name: 'Mix (Samyoga)',       icon: <RotateCw size={15} />, desc: 'Blend all together' },
-  { id: 'form_pills', name: 'Form Pills (Vati)',   icon: <Pill size={15} />,     desc: 'Shape into tablets/varti' },
-  { id: 'freeze',     name: 'Cool (Shita)',        icon: <Snowflake size={15} />,desc: 'Let the compound cool' },
+  { id: 'grind', key: 'mardan', name: 'Grind (Mardana)', devanagari: 'मर्दनम् (Mardana)', icon: <Cog size={15} />, desc: 'Triturate & powder herbs in stone mortar' },
+  { id: 'sieve', key: 'sifting', name: 'Sieve (Vastragalita)', devanagari: 'वस्त्रगालितम् (Sifting)', icon: <Columns size={15} />, desc: 'Pass fine powder through clean cloth' },
+  { id: 'heat', key: 'agni', name: 'Heat (Agni Paka)', devanagari: 'अग्निदानम् (Agni Paka)', icon: <Flame size={15} />, desc: 'Apply controlled classical heat' },
+  { id: 'filter', key: 'filter', name: 'Filter (Galana)', devanagari: 'गालनम् (Galana)', icon: <Filter size={15} />, desc: 'Filter decoction or liquid extract' },
+  { id: 'mix', key: 'mix', name: 'Mix (Mishrana)', devanagari: 'मिश्रणम् (Mishrana)', icon: <RotateCw size={15} />, desc: 'Homogenize multiple compounded herbs' },
+  { id: 'form_pills', key: 'form_pills', name: 'Form Pills (Vati)', devanagari: 'वटीनिर्माणम् (Vati)', icon: <Pill size={15} />, desc: 'Roll paste into spherical tablets' },
+  { id: 'freeze', key: 'freeze', name: 'Cool (Sheetikarana)', devanagari: 'शीतीकरणम् (Cooling)', icon: <Snowflake size={15} />, desc: 'Allow formulation to cool naturally' },
 ];
-
-const TIME_UNITS = ['second', 'minute', 'hour', 'day'];
 
 const ActionsPanel = () => {
   const {
@@ -21,32 +21,66 @@ const ActionsPanel = () => {
     actionSequence,
   } = useSimulation();
 
+  const [lang, setLang] = useState(() => getLanguage());
+  const [announcement, setAnnouncement] = useState('');
+
+  useEffect(() => {
+    const handleLangChange = () => setLang(getLanguage());
+    window.addEventListener('ayurveda_language_changed', handleLangChange);
+    return () => window.removeEventListener('ayurveda_language_changed', handleLangChange);
+  }, []);
+
+  const handleActionClick = (action) => {
+    applyAction(action.id);
+    const label = lang === 'sa' ? action.devanagari : action.name;
+    setAnnouncement(`Action started: ${label}`);
+  };
+
   const resultColor = simulationResult?.success === true ? '#10b981'
     : simulationResult?.success === false ? '#f59e0b' : '#c2410c';
 
   return (
-    <div className="actions-sidebar ayurvedic-panel" style={{ display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto', borderRadius: '40px 4px 40px 4px' }}>
+    <div 
+      className="actions-sidebar ayurvedic-panel" 
+      style={{ display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto', borderRadius: '40px 4px 40px 4px' }}
+      role="region"
+      aria-label="Laboratory Pharmacy Actions"
+    >
+      {/* Screen Reader Live Region */}
+      <div 
+        aria-live="polite" 
+        aria-atomic="true" 
+        style={{ position: 'absolute', width: 1, height: 1, padding: 0, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}
+      >
+        {announcement}
+      </div>
 
       {/* Header */}
-      <h3 style={{ marginBottom: '0.3rem' }}>⚗️ Lab Actions</h3>
+      <h3 style={{ marginBottom: '0.3rem', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        ⚗️ {lang === 'sa' ? 'रसशाला कर्माणि' : 'Lab Actions'}
+      </h3>
       <p style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-        Follow the experiment SOP steps in order.
+        {lang === 'sa' ? 'यथाविधि शास्त्रोक्तक्रमं पालयत।' : 'Follow the classical SOP steps in order.'}
       </p>
 
-      {/* Action buttons */}
+      {/* Action buttons with bilingual Devanagari / English display */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginBottom: '0.75rem' }}>
-        {ACTIONS.map(a => (
-          <button
-            key={a.id}
-            className="lab-action-btn"
-            onClick={() => applyAction(a.id)}
-            disabled={!!currentAction}
-            title={a.desc}
-          >
-            <span className="lab-action-icon">{a.icon}</span>
-            <span className="lab-action-label">{a.name}</span>
-          </button>
-        ))}
+        {ACTIONS.map(a => {
+          const displayLabel = lang === 'sa' ? a.devanagari : a.name;
+          return (
+            <button
+              key={a.id}
+              className="lab-action-btn"
+              onClick={() => handleActionClick(a)}
+              disabled={!!currentAction}
+              title={a.desc}
+              aria-label={a.name}
+            >
+              <span className="lab-action-icon">{a.icon}</span>
+              <span className="lab-action-label" style={{ fontSize: '0.78rem' }}>{displayLabel}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Result feedback */}
@@ -69,97 +103,6 @@ const ActionsPanel = () => {
           {simulationResult.message}
         </div>
       )}
-
-      {/* Step counter */}
-      {actionSequence?.length > 0 && (
-        <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-          Steps taken: <strong style={{ color: 'var(--text-primary)' }}>{actionSequence.length}</strong>
-        </p>
-      )}
-
-      {/* Reset */}
-      <button
-        onClick={resetCanvas}
-        style={{
-          padding: '0.45rem', borderRadius: '8px', border: '1px solid var(--error-color)',
-          background: 'rgba(146, 64, 14, 0.08)', color: 'var(--error-color)',
-          cursor: 'pointer', fontSize: '0.75rem', marginBottom: '1.25rem'
-        }}
-      >
-        🔄 Reset Lab
-      </button>
-
-      {/* ── Time-Lapse Controls ──────────────────────────────────── */}
-      <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-        <h3 style={{ marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Clock size={15} /> Time-Lapse
-        </h3>
-        <p style={{ fontSize: '0.67rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-          Set how fast simulated actions run.
-        </p>
-
-        {/* Row 1: "X real seconds" */}
-        <label style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
-          Each action takes
-        </label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.6rem' }}>
-          <input
-            type="number"
-            min={0.5}
-            max={60}
-            step={0.5}
-            value={timelapse.realSeconds}
-            onChange={e => setTimelapse(t => ({ ...t, realSeconds: Number(e.target.value) || 1 }))}
-            style={{
-              width: '60px', padding: '0.35rem',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '6px', color: 'var(--text-primary)',
-              fontSize: '0.78rem', outline: 'none', textAlign: 'center'
-            }}
-          />
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>real sec</span>
-        </div>
-
-        {/* Row 2: "= X units of simulated time" */}
-        <label style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
-          Which equals
-        </label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <input
-            type="number"
-            min={1}
-            value={timelapse.equals}
-            onChange={e => setTimelapse(t => ({ ...t, equals: Number(e.target.value) || 1 }))}
-            style={{
-              width: '55px', padding: '0.35rem',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '6px', color: 'var(--text-primary)',
-              fontSize: '0.78rem', outline: 'none', textAlign: 'center'
-            }}
-          />
-          <select
-            value={timelapse.unit}
-            onChange={e => setTimelapse(t => ({ ...t, unit: e.target.value }))}
-            style={{
-              flex: 1, padding: '0.35rem',
-              background: 'rgba(0,0,0,0.3)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '6px', color: 'var(--text-primary)',
-              fontSize: '0.72rem', outline: 'none'
-            }}
-          >
-            {TIME_UNITS.map(u => <option key={u} value={u}>{u}{timelapse.equals !== 1 ? 's' : ''}</option>)}
-          </select>
-        </div>
-
-        {/* Preview */}
-        <p style={{ fontSize: '0.63rem', color: 'var(--primary-color)', marginTop: '0.5rem' }}>
-          ⏱ {timelapse.realSeconds}s = {timelapse.equals} {timelapse.unit}{timelapse.equals !== 1 ? 's' : ''} of lab time
-        </p>
-      </div>
-
     </div>
   );
 };

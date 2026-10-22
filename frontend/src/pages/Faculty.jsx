@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { 
   FlaskConical, Database, BookText, Settings, 
   Leaf, Video, Play, X, Plus, Trash2, 
-  CheckCircle2, AlertCircle, Eye, RefreshCw, ShieldCheck
+  CheckCircle2, AlertCircle, AlertTriangle, Clock, Eye, RefreshCw, ShieldCheck,
+  Award, Search, Edit3
 } from 'lucide-react';
 import { getAllRecordings, deleteRecording as deleteRecordingDB } from '../utils/db';
 import './Faculty.css';
@@ -19,7 +20,7 @@ const Faculty = () => {
     isExamMode, setIsExamMode
   } = useData();
 
-  const [activeTab, setActiveTab] = useState('experiments');
+  const [activeTab, setActiveTab] = useState('grading'); // Default to Student Grading & Assessments
 
   // Toast notification
   const [toastMessage, setToastMessage] = useState(null);
@@ -27,6 +28,16 @@ const Faculty = () => {
     setToastMessage({ text, type });
     setTimeout(() => setToastMessage(null), 3500);
   };
+
+  // Student Grading System State
+  const [gradingAttempts, setGradingAttempts] = useState([]);
+  const [loadingGrading, setLoadingGrading] = useState(false);
+  const [selectedAttemptToGrade, setSelectedAttemptToGrade] = useState(null);
+  const [facultyMarksInput, setFacultyMarksInput] = useState(85);
+  const [facultyGradeInput, setFacultyGradeInput] = useState('Uttama (A)');
+  const [facultyRemarksInput, setFacultyRemarksInput] = useState('');
+  const [gradingSearch, setGradingSearch] = useState('');
+  const [gradingFilter, setGradingFilter] = useState('all'); // 'all' | 'pending' | 'graded' | 'approved'
 
   // Recordings
   const [recordings, setRecordings] = useState([]);
@@ -54,16 +65,119 @@ const Faculty = () => {
 
   const fetchRecordings = async () => {
     try {
+      const response = await fetch('/api/exam/attempts?limit=50', {
+        credentials: 'include',
+        headers: {
+          ...(localStorage.getItem('ayurveda_token') ? { 'Authorization': `Bearer ${localStorage.getItem('ayurveda_token')}` } : {})
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.attempts && data.attempts.length > 0) {
+          setRecordings(data.attempts);
+          return;
+        }
+      }
       const recs = await getAllRecordings();
       setRecordings(recs || []);
     } catch (e) {
-      console.error('Error fetching recordings:', e);
+      console.error('Error fetching recordings from server:', e);
+      try {
+        const recs = await getAllRecordings();
+        setRecordings(recs || []);
+      } catch (err) {}
+    }
+  };
+
+  const handleReviewAttempt = async (id, status, notes = '') => {
+    try {
+      const res = await fetch(`/api/exam/attempts/${id}/review`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('ayurveda_token') ? { 'Authorization': `Bearer ${localStorage.getItem('ayurveda_token')}` } : {})
+        },
+        credentials: 'include',
+        body: JSON.stringify({ status, reviewNotes: notes }),
+      });
+      if (res.ok) {
+        showToast(`Exam attempt marked as ${status}`);
+        fetchRecordings();
+        setPlayingRecording(null);
+      } else {
+        showToast('Failed to update exam status', 'error');
+      }
+    } catch (err) {
+      console.error('Review attempt error:', err);
+      showToast('Error reviewing exam attempt', 'error');
+    }
+  };
+
+  const fetchGradingAttempts = async () => {
+    setLoadingGrading(true);
+    try {
+      const token = localStorage.getItem('ayurveda_token') || '';
+      const res = await fetch('/api/simulation/admin/attempts?limit=100', {
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.attempts) {
+          setGradingAttempts(data.attempts);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load student attempts for grading:', err);
+    } finally {
+      setLoadingGrading(false);
+    }
+  };
+
+  const handleOpenGradeModal = (att) => {
+    setSelectedAttemptToGrade(att);
+    setFacultyMarksInput(typeof att.score === 'number' ? att.score : 85);
+    setFacultyGradeInput(att.grade || (att.passed ? 'Uttama (A)' : 'Madhyama (B)'));
+    setFacultyRemarksInput(att.facultyRemarks || att.feedback || 'Completed classical preparation.');
+  };
+
+  const handleSaveGrade = async (status = 'graded') => {
+    if (!selectedAttemptToGrade?._id) return;
+    try {
+      const token = localStorage.getItem('ayurveda_token') || '';
+      const res = await fetch(`/api/simulation/admin/attempts/${selectedAttemptToGrade._id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          score: Number(facultyMarksInput),
+          grade: facultyGradeInput,
+          facultyRemarks: facultyRemarksInput,
+          status,
+          passed: Number(facultyMarksInput) >= 50,
+        }),
+      });
+      if (res.ok) {
+        showToast(`Official Grade Published: ${facultyMarksInput}% (${facultyGradeInput})`);
+        setSelectedAttemptToGrade(null);
+        fetchGradingAttempts();
+      } else {
+        showToast('Failed to record faculty grade', 'error');
+      }
+    } catch (err) {
+      console.error('Grade save error:', err);
+      showToast('Error recording faculty grade', 'error');
     }
   };
 
   useEffect(() => {
     if (activeTab === 'recordings') {
       fetchRecordings();
+    } else if (activeTab === 'grading') {
+      fetchGradingAttempts();
     }
   }, [activeTab]);
 
@@ -160,6 +274,12 @@ const Faculty = () => {
       {/* Tabs */}
       <div className="faculty-tabs glass-panel">
         <button 
+          className={`faculty-tab-btn ${activeTab === 'grading' ? 'active' : ''}`}
+          onClick={() => setActiveTab('grading')}
+        >
+          <Award size={18} /> Student Grading & Assessments ({gradingAttempts.length})
+        </button>
+        <button 
           className={`faculty-tab-btn ${activeTab === 'experiments' ? 'active' : ''}`}
           onClick={() => setActiveTab('experiments')}
         >
@@ -190,6 +310,202 @@ const Faculty = () => {
           <Settings size={18} /> Exam Controls
         </button>
       </div>
+
+      {/* Tab: Student Grading & Assessments */}
+      {activeTab === 'grading' && (
+        <div className="faculty-tab-content">
+          <div className="faculty-card glass-panel leaf-card" style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h3 className="section-title" style={{ margin: 0 }}>
+                  <Award size={20} /> Student Practical Submissions & Official Faculty Grading
+                </h3>
+                <p className="text-muted" style={{ fontSize: '0.88rem', margin: '0.35rem 0 0 0' }}>
+                  Institutional repository of student compounding sessions across all 70+ formulations. Review procedural deviations, Siddhi Lakshanas, and issue official grades.
+                </p>
+              </div>
+              <button 
+                type="button" 
+                onClick={fetchGradingAttempts} 
+                className="btn-outline" 
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem', fontSize: '0.82rem' }}
+              >
+                <RefreshCw size={14} className={loadingGrading ? 'spin' : ''} /> Refresh Submissions
+              </button>
+            </div>
+
+            {/* Grading Summary KPI Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1.25rem' }}>
+              <div style={{ background: '#f8fafc', padding: '1rem 1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Total Submissions</span>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: '0.2rem 0' }}>{gradingAttempts.length}</div>
+                <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 500 }}>All 70+ Formulations</span>
+              </div>
+              <div style={{ background: '#f8fafc', padding: '1rem 1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Pending Review</span>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#d97706', margin: '0.2rem 0' }}>
+                  {gradingAttempts.filter(a => a.status === 'pending' || !a.status).length}
+                </div>
+                <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 500 }}>Awaiting Faculty Evaluation</span>
+              </div>
+              <div style={{ background: '#f8fafc', padding: '1rem 1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Graded / Approved</span>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#059669', margin: '0.2rem 0' }}>
+                  {gradingAttempts.filter(a => a.status === 'graded' || a.status === 'approved').length}
+                </div>
+                <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 500 }}>Official Grades Published</span>
+              </div>
+              <div style={{ background: '#f8fafc', padding: '1rem 1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Average Awarded Score</span>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: '0.2rem 0' }}>
+                  {gradingAttempts.length > 0 
+                    ? `${Math.round(gradingAttempts.reduce((acc, a) => acc + (a.score || 0), 0) / gradingAttempts.length)}%`
+                    : '100%'}
+                </div>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>Class Practical Average</span>
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.85rem', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
+              <div style={{ position: 'relative', flex: '1 1 240px', maxWidth: '380px' }}>
+                <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                <input
+                  type="text"
+                  placeholder="Search by student name or practical..."
+                  value={gradingSearch}
+                  onChange={(e) => setGradingSearch(e.target.value)}
+                  style={{ width: '100%', padding: '0.48rem 0.75rem 0.48rem 2.2rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                {['all', 'pending', 'graded', 'approved'].map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setGradingFilter(f)}
+                    style={{
+                      padding: '0.38rem 0.8rem',
+                      borderRadius: '999px',
+                      fontSize: '0.76rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: gradingFilter === f ? '1px solid #10b981' : '1px solid #e2e8f0',
+                      background: gradingFilter === f ? '#ecfdf5' : '#ffffff',
+                      color: gradingFilter === f ? '#065f46' : '#475569',
+                      textTransform: 'capitalize',
+                    }}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Submissions Table */}
+          <div className="faculty-card glass-panel leaf-card">
+            {gradingAttempts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+                <Award size={36} color="#94a3b8" style={{ marginBottom: '0.75rem' }} />
+                <h4 style={{ margin: 0, color: '#1e293b' }}>No Student Submissions Yet</h4>
+                <p className="text-muted" style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                  When students complete a compounding practical in the Virtual Lab, their session records will appear here for faculty grading.
+                </p>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.84rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
+                      <th style={{ padding: '0.75rem 1rem' }}>Student Scholar</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>Practical Formulation</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>Date & Time</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>Machine Score</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>Official Faculty Grade</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>Deviations</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>Status</th>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gradingAttempts
+                      .filter((att) => {
+                        const q = gradingSearch.toLowerCase().trim();
+                        const matchesQ = !q || (att.userName || '').toLowerCase().includes(q) || (att.practicalName || '').toLowerCase().includes(q);
+                        const matchesF = gradingFilter === 'all' || (att.status || 'pending') === gradingFilter;
+                        return matchesQ && matchesF;
+                      })
+                      .map((att) => (
+                        <tr key={att._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#0f172a' }}>
+                            <div>{att.userName || att.user?.name || 'Ayurveda Scholar'}</div>
+                            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 400 }}>{att.user?.email || ''}</span>
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#1e293b' }}>
+                            {att.practicalName}
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', color: '#64748b', fontSize: '0.78rem' }}>
+                            {new Date(att.createdAt || att.startedAt).toLocaleDateString()} at {new Date(att.createdAt || att.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#475569' }}>
+                            {att.score}%
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem' }}>
+                            <span style={{ 
+                              background: att.status === 'approved' ? '#ecfdf5' : '#eff6ff', 
+                              color: att.status === 'approved' ? '#065f46' : '#1d4ed8',
+                              padding: '0.2rem 0.55rem', 
+                              borderRadius: '6px', 
+                              fontWeight: 700, 
+                              fontSize: '0.78rem' 
+                            }}>
+                              {att.grade || `${att.score}% (Automated)`}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem' }}>
+                            <span style={{ 
+                              color: (att.mistakes?.length || 0) === 0 ? '#059669' : '#b45309',
+                              fontWeight: 600,
+                              fontSize: '0.78rem',
+                            }}>
+                              {(att.mistakes?.length || 0) === 0 ? '0 Deviations' : `${att.mistakes.length} Deviation(s)`}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '0.2rem 0.55rem',
+                              borderRadius: '999px',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              background: att.status === 'approved' ? '#dcfce7' : (att.status === 'graded' ? '#e0f2fe' : '#fef3c7'),
+                              color: att.status === 'approved' ? '#15803d' : (att.status === 'graded' ? '#0369a1' : '#b45309'),
+                            }}>
+                              {att.status || 'Pending'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenGradeModal(att)}
+                              className="btn-primary"
+                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}
+                            >
+                              <Edit3 size={13} /> {att.status === 'approved' ? 'Edit Grade' : 'Grade & Review'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Tab: Experiments */}
       {activeTab === 'experiments' && (
@@ -429,30 +745,59 @@ const Faculty = () => {
               </div>
             ) : (
               <div className="recordings-grid">
-                {recordings.map((rec) => (
-                  <div key={rec.id} className="recording-card glass-panel">
-                    <div className="rec-info">
-                      <strong>{rec.experimentTitle || 'Practical Exam Assessment'}</strong>
-                      <span className="rec-date">{new Date(rec.timestamp).toLocaleString()}</span>
-                      <span className="rec-duration">Session ID: #{rec.id}</span>
+                {recordings.map((rec) => {
+                  const recId = rec._id || rec.id;
+                  const title = rec.practicalName || rec.experimentTitle || 'Practical Exam';
+                  const student = rec.userName || rec.studentName || 'Student';
+                  const dateStr = new Date(rec.createdAt || rec.date || rec.timestamp || Date.now()).toLocaleString();
+                  const flagCount = rec.flagCount ?? (rec.flags?.length || 0);
+                  const status = rec.status || 'pending';
+
+                  return (
+                    <div key={recId} className="recording-card glass-panel">
+                      <div className="rec-info">
+                        <strong>{title}</strong>
+                        <span className="rec-date">{student} • {dateStr}</span>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px' }}>
+                          {rec.score !== undefined && (
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: rec.score >= 70 ? '#10b981' : '#f59e0b' }}>
+                              Score: {rec.score}%
+                            </span>
+                          )}
+                          <span style={{ 
+                            fontSize: '0.7rem', 
+                            padding: '2px 7px', 
+                            borderRadius: '999px',
+                            fontWeight: 600,
+                            background: flagCount === 0 ? '#dcfce7' : '#fef3c7',
+                            color: flagCount === 0 ? '#15803d' : '#b45309'
+                          }}>
+                            {flagCount === 0 ? '0 Flags' : `${flagCount} Flags`}
+                          </span>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            padding: '2px 7px',
+                            borderRadius: '999px',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            background: status === 'approved' ? '#dcfce7' : status === 'rejected' ? '#fee2e2' : '#f1f5f9',
+                            color: status === 'approved' ? '#15803d' : status === 'rejected' ? '#b91c1c' : '#475569'
+                          }}>
+                            {status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="rec-actions">
+                        <button 
+                          className="btn-primary play-btn"
+                          onClick={() => setPlayingRecording(rec)}
+                        >
+                          <Play size={14} /> Review Session
+                        </button>
+                      </div>
                     </div>
-                    <div className="rec-actions">
-                      <button 
-                        className="btn-primary play-btn"
-                        onClick={() => setPlayingRecording(rec)}
-                      >
-                        <Play size={14} /> Watch Session
-                      </button>
-                      <button 
-                        className="icon-btn delete-btn"
-                        onClick={() => handleDeleteRecording(rec.id)}
-                        title="Delete recording"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -505,23 +850,179 @@ const Faculty = () => {
         </div>
       )}
 
-      {/* Recording Playback Modal */}
+      {/* Recording Playback & Proctoring Review Modal */}
       {playingRecording && (
         <div className="recording-modal-overlay">
-          <div className="recording-modal-card glass-panel">
+          <div className="recording-modal-card glass-panel" style={{ maxWidth: '720px', width: '92%' }}>
             <div className="rec-modal-header">
-              <h4>{playingRecording.experimentTitle || 'Exam Video Session'}</h4>
+              <div>
+                <h4>{playingRecording.practicalName || playingRecording.experimentTitle || 'Exam Video Session'}</h4>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+                  Student: <strong>{playingRecording.userName || playingRecording.studentName || 'Student'}</strong> • Score: <strong>{playingRecording.score || 0}%</strong>
+                </p>
+              </div>
               <button onClick={() => setPlayingRecording(null)} className="close-btn">
                 <X size={18} />
               </button>
             </div>
-            <div className="video-player-wrapper">
+            
+            <div className="video-player-wrapper" style={{ marginTop: '0.75rem' }}>
               <video 
-                src={URL.createObjectURL(playingRecording.videoBlob)} 
+                src={playingRecording.recordingUrl || (playingRecording.videoBlob ? URL.createObjectURL(playingRecording.videoBlob) : (playingRecording.blob ? URL.createObjectURL(playingRecording.blob) : ''))} 
                 controls 
                 autoPlay 
                 className="session-video"
+                style={{ width: '100%', borderRadius: '12px', background: '#000', maxHeight: '360px' }}
               />
+            </div>
+
+            {/* Proctoring Flags Timeline */}
+            {Array.isArray(playingRecording.flags) && playingRecording.flags.length > 0 && (
+              <div style={{ marginTop: '1rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '0.75rem 1rem' }}>
+                <strong style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#b45309', fontSize: '0.85rem' }}>
+                  <AlertTriangle size={15} /> Proctoring Violations Timeline ({playingRecording.flags.length})
+                </strong>
+                <div style={{ maxHeight: '110px', overflowY: 'auto', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {playingRecording.flags.map((f, i) => (
+                    <div key={i} style={{ fontSize: '0.78rem', color: '#78350f', display: 'flex', gap: '8px' }}>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{f.timeFormatted || new Date(f.timestamp).toLocaleTimeString()}</span>
+                      <span>•</span>
+                      <span><strong>{f.type}</strong>: {f.detail}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Faculty Grading & Approval Actions */}
+            {playingRecording._id && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+                <button 
+                  onClick={() => handleReviewAttempt(playingRecording._id, 'rejected', 'Review rejected due to proctoring flags')}
+                  className="btn-outline"
+                  style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+                >
+                  Reject Attempt
+                </button>
+                <button 
+                  onClick={() => handleReviewAttempt(playingRecording._id, 'approved', 'Verified and approved')}
+                  className="btn-primary"
+                  style={{ background: '#10b981' }}
+                >
+                  <CheckCircle2 size={16} /> Approve & Validate
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Official Student Practical Grading Modal */}
+      {selectedAttemptToGrade && (
+        <div className="recording-modal-overlay">
+          <div className="recording-modal-card glass-panel" style={{ maxWidth: '640px', width: '92%' }}>
+            <div className="rec-modal-header">
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Award size={20} color="#10b981" /> Grade Practical: {selectedAttemptToGrade.practicalName}
+                </h4>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                  Student: <strong>{selectedAttemptToGrade.userName || selectedAttemptToGrade.user?.name || 'Ayurveda Scholar'}</strong> ({selectedAttemptToGrade.user?.email || 'Student'})
+                </p>
+              </div>
+              <button onClick={() => setSelectedAttemptToGrade(null)} className="close-btn">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {/* Deviations summary */}
+              <div style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.82rem' }}>
+                <strong style={{ color: '#334155', display: 'block', marginBottom: '0.35rem' }}>
+                  Automated Lab Diagnostic Summary:
+                </strong>
+                <div>Machine Score: <strong>{selectedAttemptToGrade.score}%</strong></div>
+                <div>Recorded Deviations: <strong>{selectedAttemptToGrade.mistakes?.length || 0} mistake(s)</strong></div>
+                {Array.isArray(selectedAttemptToGrade.mistakes) && selectedAttemptToGrade.mistakes.length > 0 && (
+                  <ul style={{ margin: '0.4rem 0 0 0', paddingLeft: '1.2rem', color: '#b45309' }}>
+                    {selectedAttemptToGrade.mistakes.map((m, idx) => (
+                      <li key={idx}>{m.message || m.type || 'Procedural deviation'}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* Form Inputs */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+                    Official Awarded Marks (0 - 100):
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={facultyMarksInput}
+                    onChange={(e) => setFacultyMarksInput(Math.min(100, Math.max(0, Number(e.target.value))))}
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 700 }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+                    Classical Letter Grade:
+                  </label>
+                  <select
+                    value={facultyGradeInput}
+                    onChange={(e) => setFacultyGradeInput(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}
+                  >
+                    <option value="Uttama (A)">Uttama (A) - High Proficiency</option>
+                    <option value="Madhyama (B)">Madhyama (B) - Satisfactory</option>
+                    <option value="Heena (C)">Heena (C) - Marginally Acceptable</option>
+                    <option value="Re-attempt Required (F)">Re-attempt Required (F)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+                  Faculty Evaluation Remarks & Viva Feedback:
+                </label>
+                <textarea
+                  rows="3"
+                  value={facultyRemarksInput}
+                  onChange={(e) => setFacultyRemarksInput(e.target.value)}
+                  placeholder="e.g. Accurate Mardana achieved. Recommended review of Vastragalita mesh sieving protocols."
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #f1f5f9' }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedAttemptToGrade(null)}
+                  className="btn-outline"
+                  style={{ padding: '0.45rem 1rem' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveGrade('graded')}
+                  className="btn-outline"
+                  style={{ padding: '0.45rem 1rem' }}
+                >
+                  Save Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveGrade('approved')}
+                  className="btn-primary"
+                  style={{ padding: '0.45rem 1.25rem', background: '#10b981' }}
+                >
+                  <CheckCircle2 size={16} /> Publish & Approve Grade
+                </button>
+              </div>
             </div>
           </div>
         </div>

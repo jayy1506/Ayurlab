@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # Ayurlab Main Application (Vite Frontend SPA + Express 5 Backend API)
+  # ----------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ayurlab_app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongo:27017/ayurveda_lab
+      - ALLOWED_ORIGINS=http://localhost:5000,http://localhost:5173,http://127.0.0.1:5173
+      - JWT_SECRET=${JWT_SECRET:-ayurveda_secure_jwt_secret_key_2026_x89!k}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-ayurveda_secure_refresh_secret_key_2026_7d!z}
+      - COLLEGE_ID=${COLLEGE_ID:-COLLEGE_001}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_KEY_1=${GEMINI_KEY_1}
+      - GEMINI_KEY_2=${GEMINI_KEY_2}
+      - GEMINI_KEY_3=${GEMINI_KEY_3}
+      - GEMINI_KEY_4=${GEMINI_KEY_4}
+      - UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}
+      - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-ap-south-1}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET:-ayurlab-exam-recordings}
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - exam_recordings_data:/app/backend/uploads/exam_recordings
+    networks:
+      - ayurlab_network
+
+  # ----------------------------------------------------------------------------
+  # MongoDB Database Service
+  # ----------------------------------------------------------------------------
+  mongo:
+    image: mongo:7.0
+    container_name: ayurlab_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - ayurlab_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ----------------------------------------------------------------------------
+  # Redis Cache Service
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: ayurlab_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ayurlab_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo_data:
+  redis_data:
+  exam_recordings_data:
+
+networks:
+  ayurlab_network:
+    driver: bridge

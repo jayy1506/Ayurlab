@@ -2,9 +2,10 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ayurveda_secure_jwt_secret_key_2026_x89!k';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'ayurveda_secure_refresh_secret_key_2026_7d!z';
 
-// Helper to generate signed JWT token
-export const generateToken = (user) => {
+// Helper to generate short-lived access token (15 minutes)
+export const generateAccessToken = (user) => {
   return jwt.sign(
     {
       id: user._id,
@@ -13,22 +14,40 @@ export const generateToken = (user) => {
       email: user.email,
     },
     JWT_SECRET,
+    { expiresIn: '15m' }
+  );
+};
+
+// Helper to generate refresh token (7 days)
+export const generateRefreshToken = (user) => {
+  return jwt.sign(
+    {
+      id: user._id,
+      role: user.role,
+      collegeId: user.collegeId,
+      email: user.email,
+      type: 'refresh',
+    },
+    JWT_REFRESH_SECRET,
     { expiresIn: '7d' }
   );
 };
+
+// Legacy helper for backward compatibility
+export const generateToken = generateAccessToken;
 
 // Authenticate user middleware: verifies token and validates active status
 export const authenticateUser = async (req, res, next) => {
   try {
     let token;
 
-    if (
+    if (req.cookies && (req.cookies.accessToken || req.cookies.token)) {
+      token = req.cookies.accessToken || req.cookies.token;
+    } else if (
       req.headers.authorization &&
       req.headers.authorization.startsWith('Bearer')
     ) {
       token = req.headers.authorization.split(' ')[1];
-    } else if (req.cookies && req.cookies.token) {
-      token = req.cookies.token;
     }
 
     const headerEmail = (
@@ -201,4 +220,37 @@ export const requireStudent = (req, res, next) => {
   }
   next();
 };
+
+// Optional authentication middleware: sets req.user if valid token exists, but does not block if absent
+export const optionalAuthenticateUser = async (req, res, next) => {
+  try {
+    let token = null;
+    if (req.cookies && (req.cookies.accessToken || req.cookies.token)) {
+      token = req.cookies.accessToken || req.cookies.token;
+    } else if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer')
+    ) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded && decoded.id) {
+          const user = await User.findById(decoded.id);
+          if (user && user.isActive) {
+            req.user = user;
+          }
+        }
+      } catch (e) {
+        // Token invalid or expired, continue without user
+      }
+    }
+  } catch (err) {
+    // Ignore error
+  }
+  next();
+};
+
 

@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  auth, 
-  db, 
-  signInWithEmailAndPassword, 
+import {
+  auth,
+  db,
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signOut, 
+  signOut,
   onAuthStateChanged,
   updatePassword,
   updateProfile,
@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => localStorage.getItem('ayurveda_token') || '');
   const [loading, setLoading] = useState(true);
 
-  // Authenticated fetch helper
+  // Authenticated fetch helper with automatic cookie support and 401 refresh
   const authFetch = async (url, options = {}) => {
     let currentToken = token;
     if (!currentToken && auth?.currentUser) {
@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }) => {
         console.warn('Could not retrieve Firebase ID token:', e);
       }
     }
-    
+
     if (!currentToken) {
       currentToken = localStorage.getItem('ayurveda_token');
     }
@@ -58,10 +58,36 @@ export const AuthProvider = ({ children }) => {
       headers['Authorization'] = `Bearer ${currentToken}`;
     }
 
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       ...options,
       headers,
+      credentials: 'include',
     });
+
+    // Auto-refresh access token if expired (401)
+    if (response.status === 401 && !url.includes('/api/auth/refresh') && !url.includes('/api/auth/login')) {
+      try {
+        const refreshRes = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (refreshRes.ok) {
+          const refreshData = await refreshRes.json();
+          if (refreshData.accessToken) {
+            setToken(refreshData.accessToken);
+            headers['Authorization'] = `Bearer ${refreshData.accessToken}`;
+          }
+          // Retry original request with refreshed session
+          response = await fetch(url, {
+            ...options,
+            headers,
+            credentials: 'include',
+          });
+        }
+      } catch (refreshErr) {
+        console.warn('[AuthContext] Auto-refresh failed:', refreshErr);
+      }
+    }
 
     return response;
   };
@@ -113,7 +139,7 @@ export const AuthProvider = ({ children }) => {
         if (userSnap && userSnap.exists()) {
           const data = userSnap.data();
           if (isAdminEmail && data.role !== 'admin') {
-            updateDoc(userRef, { role: 'admin', updatedAt: serverTimestamp() }).catch(() => {});
+            updateDoc(userRef, { role: 'admin', updatedAt: serverTimestamp() }).catch(() => { });
             data.role = 'admin';
           }
           const firestorePassChanged = data.isDefaultPassword === false;
@@ -135,7 +161,7 @@ export const AuthProvider = ({ children }) => {
             ...instantProfile,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-          }, { merge: true }).catch(() => {});
+          }, { merge: true }).catch(() => { });
         }
       } catch (err) {
         // Use instant profile on timeout or offline
@@ -170,7 +196,7 @@ export const AuthProvider = ({ children }) => {
           firebaseUser.getIdToken().then(idToken => {
             localStorage.setItem('ayurveda_token', idToken);
             setToken(idToken);
-          }).catch(() => {});
+          }).catch(() => { });
 
           setCurrentUser(profile);
         } catch (err) {
@@ -192,8 +218,51 @@ export const AuthProvider = ({ children }) => {
     const trimmedEmail = email.trim().toLowerCase();
     const customUsername = (username || '').trim();
 
+    // 1. Primary: High-speed local Express + MongoDB backend auth (<50ms)
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: trimmedEmail, password }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.user) {
+          const userToken = data.accessToken || data.token;
+          localStorage.setItem('ayurveda_token', userToken);
+          if (customUsername) {
+            localStorage.setItem('ayurveda_user_name_' + trimmedEmail, customUsername);
+          }
+          setToken(userToken);
+          setCurrentUser(data.user);
+
+          // Non-blocking Firebase session sync in background if auth is available
+          if (auth) {
+            signInWithEmailAndPassword(auth, trimmedEmail, password).catch(() => {});
+          }
+
+          return { success: true, token: userToken, user: data.user };
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (res.status === 401 || errData.error === 'InvalidCredentials') {
+          throw new Error(errData.message || 'Invalid email or password');
+        }
+        if (res.status === 403) {
+          throw new Error(errData.message || 'Your account has been disabled.');
+        }
+      }
+    } catch (backendErr) {
+      if (backendErr.message === 'Invalid email or password' || backendErr.message?.includes('disabled')) {
+        throw backendErr;
+      }
+      console.warn('[AuthContext] Backend login endpoint unavailable, attempting fallback:', backendErr.message);
+    }
+
     if (!auth) {
-      throw new Error('Firebase Authentication is not initialized');
+      throw new Error('Authentication service is not initialized');
     }
 
     try {
@@ -242,17 +311,17 @@ export const AuthProvider = ({ children }) => {
           } else if (!isNetworkFailure) {
             throw authError;
           }
-        } 
+        }
         // 2. Student or faculty account (handles local cache, auto-provision, and network failure)
         else {
           const cachedStudents = getCachedStudents();
           const cachedFaculty = getCachedFaculty();
           const registeredUser = cachedStudents.find(s => s.email.toLowerCase() === trimmedEmail) ||
-                                 cachedFaculty.find(f => f.email.toLowerCase() === trimmedEmail);
+            cachedFaculty.find(f => f.email.toLowerCase() === trimmedEmail);
 
           const isPassAlreadyChanged = localStorage.getItem('ayurveda_pass_updated_' + trimmedEmail) === 'true';
           const expectedPass = localStorage.getItem('ayurveda_account_pass_' + trimmedEmail) || registeredUser?.displayPassword || 'BAMS@123';
-          
+
           let isPassValid = false;
           if (isPassAlreadyChanged) {
             isPassValid = password === expectedPass;
@@ -326,10 +395,10 @@ export const AuthProvider = ({ children }) => {
 
       // Async background sync for Firebase Auth & Firestore (non-blocking)
       if (customUsername) {
-        updateProfile(firebaseUser, { displayName: customUsername }).catch(() => {});
+        updateProfile(firebaseUser, { displayName: customUsername }).catch(() => { });
         if (db) {
           const uRef = doc(db, 'users', firebaseUser.uid);
-          updateDoc(uRef, { name: customUsername, displayName: customUsername, updatedAt: serverTimestamp() }).catch(() => {});
+          updateDoc(uRef, { name: customUsername, displayName: customUsername, updatedAt: serverTimestamp() }).catch(() => { });
         }
       }
 
@@ -450,11 +519,11 @@ export const AuthProvider = ({ children }) => {
                 password: newPassword,
                 returnSecureToken: true,
               }),
-            }).catch(() => {});
+            }).catch(() => { });
           }
         }
       } else if (userEmail) {
-        registerFirebaseStudent(userEmail, newPassword).catch(() => {});
+        registerFirebaseStudent(userEmail, newPassword).catch(() => { });
       }
 
       // 3. Non-blocking async background update for Firestore
@@ -465,7 +534,7 @@ export const AuthProvider = ({ children }) => {
           isDefaultPassword: false,
           displayPassword: newPassword,
           updatedAt: serverTimestamp(),
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       // 4. Update local state & permanent password update flag immediately
@@ -508,11 +577,16 @@ export const AuthProvider = ({ children }) => {
   // Logout handler
   const logout = async () => {
     try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      }).catch(() => { });
+
       if (auth) {
         await signOut(auth);
       }
     } catch (e) {
-      console.warn('Firebase logout warning:', e);
+      console.warn('Logout warning:', e);
     } finally {
       localStorage.removeItem('ayurveda_token');
       setToken('');

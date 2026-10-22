@@ -1,120 +1,94 @@
-import { Redis } from "@upstash/redis";
-import { Ratelimit } from "@upstash/ratelimit";
+import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
 
-let redisClient = null;
+const JWT_SECRET = process.env.JWT_SECRET || 'ayurveda_secure_jwt_secret_key_2026_x89!k';
 
-function getRedisClient() {
-  if (redisClient) return redisClient;
+// Helper to extract client IP reliably behind proxies
+const getClientIp = (req) => {
+  return (
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    req.headers['x-real-ip'] ||
+    req.ip ||
+    req.socket?.remoteAddress ||
+    '127.0.0.1'
+  );
+};
 
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-  if (!url || !token || !token.trim() || token === "your_upstash_redis_rest_token_here") {
-    console.warn(
-      "[RateLimiter Warning] UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN is missing or not configured. Rate limiting is running in bypass mode."
-    );
-    return null;
+// Helper to extract user ID or fallback to IP for AI endpoint
+const getAiUserOrIpKey = (req) => {
+  // If user object is already attached by auth middleware
+  if (req.user && (req.user._id || req.user.id)) {
+    return `user_${req.user._id || req.user.id}`;
   }
 
-  try {
-    // Redis.fromEnv() automatically reads UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN from environment
-    redisClient = Redis.fromEnv();
-    return redisClient;
-  } catch (error) {
-    console.warn(
-      "[RateLimiter Warning] Upstash Redis could not be initialized from env:",
-      error.message
-    );
-    return null;
+  // Check accessToken or token cookie / header without throwing
+  const token = req.cookies?.accessToken || req.cookies?.token || req.headers?.authorization?.split(' ')[1];
+  if (token) {
+    try {
+      const decoded = jwt.decode(token);
+      if (decoded && (decoded.id || decoded.email)) {
+        return `user_${decoded.id || decoded.email}`;
+      }
+    } catch (e) {}
   }
-}
+
+  return `ip_${getClientIp(req)}`;
+};
 
 /**
- * Creates a rate limiting Express middleware using Upstash Redis.
- *
- * @param {Object} options
- * @param {number} [options.requests=10] - Number of allowed requests in the time window.
- * @param {string} [options.window="10 s"] - Time window (e.g., '10 s', '1 m', '1 h').
- * @param {string} [options.prefix="ratelimit"] - Redis key prefix for namespacing.
- * @param {Function} [options.getIdentifier] - Custom function to extract identifier from request.
- * @param {Object} [options.redis] - Optional custom Redis client (e.g. for testing).
- * @param {Object} [options.limiter] - Optional pre-configured Ratelimit instance.
+ * Strict Rate Limiter for Authentication Endpoints (login, change-password, refresh)
+ * Limits brute force attacks (15 requests per 15 minutes per IP)
  */
-export function createRateLimiter({
-  requests = 10,
-  window = "10 s",
-  prefix = "ratelimit",
-  getIdentifier,
-  redis: customRedis,
-  limiter: customLimiter,
-} = {}) {
-  let ratelimitInstance = customLimiter || null;
-
-  return async function rateLimiterMiddleware(req, res, next) {
-    const redis = customRedis || getRedisClient();
-
-    if (!redis && !ratelimitInstance) {
-      return next();
-    }
-
-    if (!ratelimitInstance) {
-      ratelimitInstance = new Ratelimit({
-        redis,
-        limiter: Ratelimit.slidingWindow(requests, window),
-        prefix,
-        analytics: false,
-      });
-    }
-
-
-    try {
-      const identifier =
-        (getIdentifier && getIdentifier(req)) ||
-        req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-        req.headers["x-real-ip"] ||
-        req.ip ||
-        req.socket?.remoteAddress ||
-        "anonymous";
-
-      const { success, limit, remaining, reset } = await ratelimitInstance.limit(
-        identifier
-      );
-
-      res.setHeader("X-RateLimit-Limit", limit);
-      res.setHeader("X-RateLimit-Remaining", Math.max(0, remaining));
-      res.setHeader("X-RateLimit-Reset", reset);
-
-      if (!success) {
-        const retryAfterSeconds = Math.ceil(
-          Math.max(0, reset - Date.now()) / 1000
-        );
-        res.setHeader("Retry-After", retryAfterSeconds);
-
-        return res.status(429).json({
-          error: "Too Many Requests",
-          message: `Rate limit exceeded. Please try again in ${retryAfterSeconds} second(s).`,
-          retryAfter: retryAfterSeconds,
-        });
-      }
-
-      return next();
-    } catch (error) {
-      console.error("[RateLimiter Error]:", error);
-      // Gracefully continue in case of temporary Redis network error
-      return next();
-    }
-  };
-}
-
-// Pre-configured rate limiters
-export const defaultRateLimiter = createRateLimiter({
-  requests: 30,
-  window: "10 s",
-  prefix: "ratelimit:default",
+export const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `auth_${getClientIp(req)}`,
+  handler: (req, res, next, options) => {
+    const retryAfter = Math.ceil(options.windowMs / 1000);
+    return res.status(429).json({
+      error: 'TooManyRequests',
+      message: 'Too many authentication attempts. Please try again after 15 minutes.',
+      retryAfter,
+    });
+  },
 });
 
-export const aiRateLimiter = createRateLimiter({
-  requests: 5,
-  window: "10 s",
-  prefix: "ratelimit:ai",
+/**
+ * Strict Rate Limiter for AI Tutor Endpoint (/api/ai/tutor)
+ * Limits requests per User ID when logged in, else per IP (30 requests per 15 minutes)
+ */
+export const aiRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // 30 queries per 15 minutes window
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: getAiUserOrIpKey,
+  handler: (req, res, next, options) => {
+    const retryAfter = Math.ceil(options.windowMs / 1000);
+    return res.status(429).json({
+      error: 'TooManyRequests',
+      message: 'AI query limit exceeded for this time window. Please wait a few minutes before asking more questions.',
+      retryAfter,
+    });
+  },
+});
+
+/**
+ * General API Rate Limiter
+ * Applied globally to /api to prevent denial of service (150 requests per 15 minutes)
+ */
+export const defaultRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 150,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `api_${getClientIp(req)}`,
+  handler: (req, res, next, options) => {
+    return res.status(429).json({
+      error: 'TooManyRequests',
+      message: 'Too many requests received from this client. Please slow down.',
+    });
+  },
 });

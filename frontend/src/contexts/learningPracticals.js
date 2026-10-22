@@ -1740,7 +1740,8 @@ Vishesha Shodhana:
     observations: {
       rupa: "Brittle, reduced sharpness and elasticity of edges",
       properties: "Rasayana, Vrishya, Balya, Vata-pittahara. Used for Bhasmikarana."
-    }
+    },
+    videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1789227684/Ayurveda_Virtual_Lab__Abhraka_Shodhana_1080p_xvv8a9.mp4"
   },
   {
     id: 'p48',
@@ -1913,7 +1914,8 @@ Method 2:
       rupa: "Brick red powder",
       guna: "Madhura, Kashaya, Sita veerya",
       uses: "Hicca, Vaman, Raktapradar, Raktapitta, Udarda, Daha and Kandu."
-    }
+    },
+    videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1789230702/Gairika_Shodhana_Demonstration_720p_zjeg8q.mp4"
   },
   {
     id: 'p53',
@@ -2165,7 +2167,8 @@ Method 2:
       matra: "250 mg - 500 mg",
       anupana: "Madhu (Honey), Water",
       uses: "Jirnajwara, Raktapitta, Amlapitta, Daha, Prameha, Trishna, Rasayana."
-    }
+    },
+    videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1789205770/Amrita_Satva_Preparation__Ayurveda_Virtual_Lab_720p_cnsx4z.mp4"
   },
   {
     id: 'p62',
@@ -2206,7 +2209,8 @@ Reference:
       matra: "40 ml - 80 ml",
       anupana: "Sharkara (Sugar)",
       uses: "Hridroga (Cardiovascular diseases), Asthibhagna (Bone fracture healing), Angina."
-    }
+    },
+    videoUrl: "https://res.cloudinary.com/npnav2np/video/upload/v1789232197/Ayurvedic_Virtual_Lab__Arjuna_Ksheerapaka_Preparation_720p_a3cfo4.mp4"
   },
   {
     id: 'p63',

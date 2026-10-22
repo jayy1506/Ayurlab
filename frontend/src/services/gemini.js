@@ -2,10 +2,9 @@
  * AI Tutor Client Service
  * Features:
  * 1. Client-side instant query caching (saves 100% tokens on repeated queries)
- * 2. Primary routing through backend API (/api/ai/tutor) with multi-key failover & Redis
- * 3. Client-side direct failover fallback with GoogleGenAI rotation if backend is unreachable
+ * 2. Secure routing strictly through backend API (/api/ai/tutor) with multi-key failover & Redis
+ * 3. Safe fallback message if backend is unreachable (zero client-side API key exposure)
  */
-import { GoogleGenAI } from '@google/genai';
 
 // ----------------------------------------------------
 // Tier 0: Client Browser Cache (0 token usage for repeated questions)
@@ -36,130 +35,13 @@ function setCachedReply(query, text) {
   } catch (e) {}
 }
 
-const SYSTEM_INSTRUCTION = `You are an AI Ayurveda Virtual Lab Tutor for BAMS medical students. You must STRICTLY restrict your answers to Ayurveda, herbal medicine, traditional compounding (Bhaishajya Kalpana & Rasashastra), and practical laboratory chemistry related to this virtual lab. If the user asks anything unrelated to Ayurveda or this project, you must respond EXACTLY with: 'This question is not related to the project'.
-
-CHATGPT RESPONSE PATTERN:
-1. Provide thoughtful, well-structured, authoritative, and direct responses matching modern ChatGPT formatting.
-2. Structure your answer with:
-   - A clear direct introductory paragraph setting context.
-   - For ranked lists, compounding stages, or lakshanas, use ranking badges (🥇, 🥈, 🥉, 4️⃣, 5️⃣, etc.) or clean numbered steps (1., 2., 3.) with clear bold terms.
-   - Follow with concise practical insights or classical references.
-   - Conclude with a helpful, actionable follow-up line (e.g. "If you'd like, I can detail the specific heating temperature curves or Sanskrit Shlokas for this procedure.").
-3. Keep every point medically precise, clean, and engaging.`;
-
-// Client-side fallback keys
-function getClientGeminiKeys() {
-  const env = import.meta.env || {};
-  const keys = [
-    env.VITE_GEMINI_KEY_1,
-    env.VITE_GEMINI_KEY_2,
-    env.VITE_GEMINI_KEY_3,
-    env.VITE_GEMINI_KEY_4,
-    env.VITE_GEMINI_API_KEY,
-  ].filter(Boolean);
-
-  return [...new Set(keys)];
-}
-
-let clientKeyIndex = 0;
-
-/**
- * Direct Client-Side Fallback Generation
- * Automatically used if backend server is unreachable.
- */
-/**
- * Direct Client-Side Fallback Generation
- * Automatically used if backend server is unreachable.
- */
-async function fallbackDirectGemini(question, onChunk, history = [], experimentContext = '') {
-  const keys = getClientGeminiKeys();
-  if (keys.length === 0) {
-    throw new Error('No Gemini API keys configured on client.');
-  }
-
-  // Format history for GoogleGenAI
-  const contents = [];
-  const validHistory = (Array.isArray(history) ? history : [])
-    .filter(item => item && typeof item.text === 'string' && item.text.trim().length > 0)
-    .map(item => ({
-      role: item.role === 'user' ? 'user' : 'model',
-      text: item.text.trim()
-    }));
-
-  let lastRole = null;
-  for (const item of validHistory) {
-    if (contents.length === 0 && item.role !== 'user') continue;
-    if (item.role === lastRole) {
-      contents[contents.length - 1].parts[0].text += `\n\n${item.text}`;
-    } else {
-      contents.push({
-        role: item.role,
-        parts: [{ text: item.text }]
-      });
-      lastRole = item.role;
-    }
-  }
-
-  let currentPrompt = question.trim();
-  if (experimentContext && !currentPrompt.toLowerCase().includes(experimentContext.toLowerCase())) {
-    currentPrompt = `[Context Experiment: ${experimentContext}]\n\n${currentPrompt}`;
-  }
-
-  if (lastRole === 'user' && contents.length > 0) {
-    contents[contents.length - 1].parts[0].text += `\n\n${currentPrompt}`;
-  } else {
-    contents.push({
-      role: 'user',
-      parts: [{ text: currentPrompt }]
-    });
-  }
-
-  let accumulatedText = '';
-  let callSucceeded = false;
-  let lastErr = null;
-
-  for (let attempt = 0; attempt < keys.length; attempt++) {
-    const keyIdx = (clientKeyIndex + attempt) % keys.length;
-    const apiKey = keys[keyIdx];
-
-    try {
-      const ai = new GoogleGenAI({ apiKey });
-      const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-2.5-flash',
-        contents: contents,
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-        },
-      });
-
-      for await (const chunk of responseStream) {
-        const text = chunk.text || '';
-        if (text) {
-          accumulatedText += text;
-          if (onChunk) onChunk(accumulatedText);
-        }
-      }
-
-      callSucceeded = true;
-      clientKeyIndex = keyIdx;
-      setCachedReply(question, accumulatedText);
-      return accumulatedText;
-    } catch (err) {
-      console.warn(`[Client AI Fallback] Key #${keyIdx + 1} failed:`, err.message || err);
-      lastErr = err;
-    }
-  }
-
-  if (!callSucceeded) {
-    throw lastErr || new Error('All AI keys unavailable.');
-  }
-  return accumulatedText;
-}
+const FRIENDLY_ERROR_MESSAGE = 
+  '🌿 Ayurvedic AI Tutor is currently unavailable. Please verify your internet connection or try again in a moment.';
 
 /**
  * Main askTutor function
  */
-export const askTutor = async (question, onChunk, history = [], experimentContext = '') => {
+export const askTutor = async (question, onChunk, history = [], experimentContext = '', onMetadata = null) => {
   if (!question || !question.trim()) {
     return 'Please ask a valid question.';
   }
@@ -185,11 +67,12 @@ export const askTutor = async (question, onChunk, history = [], experimentContex
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // 2. Try Backend API
+  // 2. Query Backend API with cookie credentials & authorization headers
   try {
     const response = await fetch('/api/ai/tutor', {
       method: 'POST',
       headers,
+      credentials: 'include',
       body: JSON.stringify({ 
         question: cleanQuestion,
         history,
@@ -197,17 +80,30 @@ export const askTutor = async (question, onChunk, history = [], experimentContex
       }),
     });
 
+    const interactionId = response.headers.get('x-interaction-id') || '';
+    const citations = response.headers.get('x-classical-citations') || '';
+    if (onMetadata && (interactionId || citations)) {
+      onMetadata({ interactionId, citations });
+    }
+
     // Handle Rate Limiting (429)
     if (response.status === 429) {
-      const retryAfter = response.headers.get('Retry-After') || '10';
-      const limitMsg = `⏳ Rate limit reached. You can ask up to 5 questions per 10 seconds. Please wait ${retryAfter}s.`;
+      const retryAfter = response.headers.get('Retry-After') || '15';
+      const limitMsg = `⏳ Rate limit reached. Please wait ${retryAfter} seconds before asking your next question.`;
       if (onChunk) onChunk(limitMsg);
       return limitMsg;
     }
 
     if (!response.ok) {
-      console.warn('[AI Tutor Client] Backend returned non-OK status. Falling back to direct client AI...');
-      return await fallbackDirectGemini(cleanQuestion, onChunk, history, experimentContext);
+      let errMsg = FRIENDLY_ERROR_MESSAGE;
+      try {
+        const errorJson = await response.json();
+        if (errorJson.message) {
+          errMsg = `⚠️ ${errorJson.message}`;
+        }
+      } catch (e) {}
+      if (onChunk) onChunk(errMsg);
+      return errMsg;
     }
 
     const contentType = response.headers.get('content-type') || '';
@@ -239,22 +135,39 @@ export const askTutor = async (question, onChunk, history = [], experimentContex
     if (accumulatedText && !accumulatedText.startsWith('Sorry, all AI channels')) {
       setCachedReply(cleanQuestion, accumulatedText);
     } else if (accumulatedText.startsWith('Sorry, all AI channels')) {
-      // If backend exhausted channels, try direct client fallback
-      console.warn('[AI Tutor Client] Backend channels exhausted. Trying direct client rotation...');
-      return await fallbackDirectGemini(cleanQuestion, onChunk, history, experimentContext);
+      const fallbackMsg = '⚠️ The AI Tutor service is currently experiencing high load. Please try again shortly.';
+      if (onChunk) onChunk(fallbackMsg);
+      return fallbackMsg;
     }
 
     return accumulatedText;
   } catch (err) {
-    console.warn('[AI Tutor Client] Backend network fetch failed. Switching to direct client AI fallback:', err.message);
-    try {
-      return await fallbackDirectGemini(cleanQuestion, onChunk, history, experimentContext);
-    } catch (fallbackErr) {
-      console.error('[AI Tutor Client All Fallbacks Failed]:', fallbackErr);
-      const errMsg = 'Sorry, the AI Tutor service is temporarily unavailable. Please verify your internet connection and try again in a moment.';
-      if (onChunk) onChunk(errMsg);
-      return errMsg;
-    }
+    console.error('[AI Tutor Client] Backend fetch failed:', err.message);
+    if (onChunk) onChunk(FRIENDLY_ERROR_MESSAGE);
+    return FRIENDLY_ERROR_MESSAGE;
+  }
+};
+
+/**
+ * Submit star rating and feedback for an AI tutor response
+ */
+export const rateInteraction = async (interactionId, rating, feedback = '') => {
+  if (!interactionId) return false;
+  try {
+    const token = localStorage.getItem('ayurveda_token') || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/ai/rating', {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: JSON.stringify({ interactionId, rating: Number(rating), feedback }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('[AI Tutor Client] Failed to submit rating:', err.message);
+    return false;
   }
 };
 

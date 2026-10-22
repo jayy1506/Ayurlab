@@ -5,6 +5,7 @@ import { logUserActivity } from '../utils/activityTracker';
 
 const SimulationContext = createContext();
 export { SimulationContext };
+export { useSimulation } from './useSimulation';
 
 export const SimulationProvider = ({ children }) => {
   const { recipes } = useData();
@@ -39,6 +40,21 @@ export const SimulationProvider = ({ children }) => {
           detail: recipe.name,
           link: '/practical'
         });
+
+        // Persist attempt to database
+        fetch('/api/simulation/attempts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            practicalId: recipe.id,
+            practicalName: recipe.name,
+            score: 100,
+            passed: true,
+            stepLog: seq,
+            feedback: result.message || 'Completed classical preparation successfully',
+          }),
+        }).catch((err) => console.warn('[SimulationContext] Attempt sync warning:', err));
 
         // Transform all herbs into a single final compound object
         setHerbsInUtensil([{

@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { Leaf, Droplet, Flame, Database, Beaker, Search } from 'lucide-react';
+import { Leaf, Droplet, Flame, Database, Beaker, Search, PlusCircle } from 'lucide-react';
 import { useData } from '../../contexts/DataContext';
+import { useSimulation } from '../../contexts/useSimulation';
+import { t, getLanguage } from '../../utils/i18n';
 
 const iconMap = {
   Leaf:     <Leaf size={14} />,
@@ -19,7 +21,7 @@ const getAssetUrl = (url) => {
   return base.endsWith('/') ? `${base}${cleanPath}` : `${base}/${cleanPath}`;
 };
 
-const DraggableItem = ({ item }) => {
+const DraggableItem = ({ item, onSelect, lang }) => {
   const [imgError, setImgError] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `inv_${item.id}`,
@@ -34,6 +36,8 @@ const DraggableItem = ({ item }) => {
   };
 
   const hasImage = Boolean(item.image) && !imgError;
+  const translated = t(item.id, lang);
+  const displayName = (translated && translated !== item.id) ? translated : item.name;
 
   return (
     <div
@@ -42,7 +46,17 @@ const DraggableItem = ({ item }) => {
       {...listeners}
       {...attributes}
       className="inventory-item glass-panel"
-      title={item.name}
+      role="button"
+      tabIndex={0}
+      aria-label={`Select ${item.name} for compounding. Click or drag to add to workbench.`}
+      title={`${item.name} (Click or drag to place)`}
+      onClick={() => onSelect && onSelect(item)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect && onSelect(item);
+        }
+      }}
     >
       <div className="item-icon" style={{ width: '100%', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.3rem', overflow: 'hidden' }}>
         {hasImage ? (
@@ -58,7 +72,10 @@ const DraggableItem = ({ item }) => {
         )}
       </div>
       <div className="item-info">
-        <h4>{item.name}</h4>
+        <h4 style={{ fontSize: '0.78rem', lineHeight: '1.2' }}>{displayName}</h4>
+        <span style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', display: 'block', marginTop: '2px' }}>
+          {item.type === 'utensil' ? 'Apparatus' : `${item.amount || 50}g`}
+        </span>
       </div>
     </div>
   );
@@ -68,8 +85,25 @@ const TABS = ['All', 'Herbs', 'Liquids', 'Utensils'];
 
 const Inventory = () => {
   const { inventoryItems } = useData();
+  const { placeUtensil, addHerbToUtensil, activeUtensil } = useSimulation();
+
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('All');
+  const [lang, setLang] = useState(() => getLanguage());
+
+  useEffect(() => {
+    const handleLangChange = () => setLang(getLanguage());
+    window.addEventListener('ayurveda_language_changed', handleLangChange);
+    return () => window.removeEventListener('ayurveda_language_changed', handleLangChange);
+  }, []);
+
+  const handleItemSelect = (item) => {
+    if (item.type === 'utensil') {
+      placeUtensil(item);
+    } else {
+      addHerbToUtensil({ ...item, amount: item.amount || 50 });
+    }
+  };
 
   const filtered = inventoryItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
@@ -78,21 +112,26 @@ const Inventory = () => {
       (activeTab === 'Herbs'    && item.type === 'herb') ||
       (activeTab === 'Liquids'  && item.type === 'liquid') ||
       (activeTab === 'Utensils' && item.type === 'utensil');
+
     return matchesSearch && matchesTab;
-  }).sort((a, b) => a.name.localeCompare(b.name));
+  });
 
   return (
-    <div className="inventory-sidebar ayurvedic-panel" style={{ borderRadius: '4px 40px 4px 40px' }}>
-      <h3 style={{ marginBottom: '0.6rem' }}>🧪 Inventory <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 400 }}>({inventoryItems.length} items)</span></h3>
-
+    <div 
+      className="inventory-sidebar ayurvedic-panel" 
+      style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
+      role="region"
+      aria-label="Laboratory Inventory"
+    >
       {/* Search */}
       <div style={{ position: 'relative', marginBottom: '0.6rem' }}>
         <Search size={13} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
         <input
           type="text"
-          placeholder="Search herb or utensil…"
+          placeholder={lang === 'sa' ? "औषधद्रव्याणि अन्विषन्तु..." : "Search herb or utensil…"}
           value={search}
           onChange={e => setSearch(e.target.value)}
+          aria-label="Search laboratory inventory"
           style={{
             width: '100%',
             padding: '0.4rem 0.5rem 0.4rem 1.8rem',
@@ -130,15 +169,27 @@ const Inventory = () => {
         ))}
       </div>
 
-      {/* Count */}
-      <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-        Showing {filtered.length} item{filtered.length !== 1 ? 's' : ''}
-      </p>
+      {/* Count & Click hint */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+        <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', margin: 0 }}>
+          {filtered.length} item{filtered.length !== 1 ? 's' : ''}
+        </p>
+        <span style={{ fontSize: '0.62rem', color: '#10b981', fontWeight: 500 }}>
+          ✓ Click or drag to add
+        </span>
+      </div>
 
       {/* Grid */}
       <div className="items-grid" style={{ flex: 1, overflowY: 'auto' }}>
         {filtered.length > 0
-          ? filtered.map(item => <DraggableItem key={item.id} item={item} />)
+          ? filtered.map(item => (
+              <DraggableItem 
+                key={item.id} 
+                item={item} 
+                onSelect={handleItemSelect}
+                lang={lang}
+              />
+            ))
           : <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', gridColumn: '1/-1' }}>No items found.</p>
         }
       </div>

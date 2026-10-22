@@ -23,6 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.env.*
+*.env
+backend/.env
+frontend/.env
 frontend/package-lock.json
 frontend/public/videos/
 scratch/

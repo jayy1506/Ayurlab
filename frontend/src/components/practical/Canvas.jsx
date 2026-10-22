@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { useSimulation } from '../../contexts/useSimulation';
 import { useData } from '../../contexts/DataContext';
 import { Link } from 'react-router-dom';
-import { X, RefreshCw, Eye, EyeOff, CheckCircle, AlertOctagon, Loader2, ArrowLeft } from 'lucide-react';
+import { X, RefreshCw, Eye, EyeOff, CheckCircle, AlertOctagon, Loader2, ArrowLeft, Award, Sparkles } from 'lucide-react';
+import SimulationResultModal from './SimulationResultModal';
+import { evaluateAttempt } from '../../utils/simulationEvaluator';
+import { getExpectedProcess } from '../../data/expectedProcesses';
+import { t, getLanguage } from '../../utils/i18n';
 
 /* ── Visual form representations ────────────────────────────────── */
 const FORM_VISUALS = {
@@ -86,9 +90,43 @@ const Canvas = () => {
   const {
     activeUtensil, herbsInUtensil, removeHerb,
     currentAction, simulationResult, resetCanvas,
+    actionSequence,
   } = useSimulation();
 
   const [showContents, setShowContents] = useState(true);
+  const [evalModalOpen, setEvalModalOpen] = useState(false);
+  const [currentEvaluation, setCurrentEvaluation] = useState(null);
+  const [endpointWarning, setEndpointWarning] = useState(null);
+  const [lang, setLang] = useState(() => getLanguage());
+
+  useEffect(() => {
+    const handleLangChange = () => setLang(getLanguage());
+    window.addEventListener('ayurveda_language_changed', handleLangChange);
+    return () => window.removeEventListener('ayurveda_language_changed', handleLangChange);
+  }, []);
+
+  // Active practical resolution
+  const activeCompoundName = (herbsInUtensil.length === 1 && herbsInUtensil[0].type === 'compound') 
+    ? herbsInUtensil[0].name 
+    : (herbsInUtensil.some(h => ['sunthi', 'maricha', 'pippali'].includes(h.id)) ? 'Trikatu Churna' : 'Triphala Churna');
+
+  const handleRunEvaluation = () => {
+    const process = getExpectedProcess(activeCompoundName) || getExpectedProcess('triphala_churna');
+    if (!process) {
+      setEndpointWarning('No classical SOP specification found for this formulation.');
+      return;
+    }
+
+    const evaluation = evaluateAttempt(process, actionSequence);
+    if (!evaluation.canComplete) {
+      setEndpointWarning(`⚠️ Siddhi Lakshana Endpoint Conditions Unmet: ${evaluation.unmetConditions.join('; ')}`);
+      return;
+    }
+
+    setEndpointWarning(null);
+    setCurrentEvaluation(evaluation);
+    setEvalModalOpen(true);
+  };
 
   /* Canvas drop zone (fallback – utensil or herb dropped on blank canvas) */
   const { isOver: isOverCanvas, setNodeRef: setCanvasRef } = useDroppable({ id: 'canvas-drop-zone' });
@@ -122,11 +160,46 @@ const Canvas = () => {
               <ArrowLeft size={13} /> Exit
             </Link>
           )}
-          <h3>⚗️ Laboratory Canvas</h3>
+          <span style={{ fontSize: '1rem', fontWeight: 700 }}>
+            ⚗️ {t('canvas_title', lang)}
+          </span>
         </div>
-        <button onClick={resetCanvas} className="btn-outline" style={{ padding: '0.25rem 0.75rem', fontSize: '0.78rem' }}>
-          <RefreshCw size={13} /> Reset Lab
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {actionSequence && actionSequence.length > 0 && (
+            <button 
+              type="button"
+              onClick={handleRunEvaluation} 
+              className="btn-primary" 
+              style={{ 
+                padding: '0.25rem 0.85rem', 
+                fontSize: '0.78rem', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.4rem', 
+                background: '#10b981', 
+                color: '#064e3b', 
+                fontWeight: 'bold',
+                boxShadow: '0 2px 8px rgba(16,185,129,0.3)',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              <Award size={14} /> {lang === 'sa' ? 'मूल्याङ्कनम् (Evaluate)' : 'Evaluate Attempt'}
+            </button>
+          )}
+          <button onClick={resetCanvas} className="btn-outline" style={{ padding: '0.25rem 0.75rem', fontSize: '0.78rem' }}>
+            <RefreshCw size={13} /> {t('reset', lang)}
+          </button>
+        </div>
+      </div>
+
+      {/* Screen Reader Live Region for Canvas Events */}
+      <div 
+        aria-live="polite" 
+        aria-atomic="true" 
+        style={{ position: 'absolute', width: 1, height: 1, padding: 0, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}
+      >
+        {activeUtensil ? `${activeUtensil.name} placed on workbench with ${herbsInUtensil.length} ingredients.` : 'Workbench empty.'}
       </div>
 
       {/* Body */}
@@ -136,8 +209,8 @@ const Canvas = () => {
         {!activeUtensil && !currentAction && (
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.4 }}>🫙</div>
-            <p className="text-muted" style={{ maxWidth: 300 }}>
-              Drag a <strong>utensil</strong> from the inventory to place it here, then drop <strong>herbs</strong> inside it.
+            <p className="text-muted" style={{ maxWidth: 320, lineHeight: 1.5 }}>
+              {t('empty_workbench', lang)}
             </p>
           </div>
         )}
@@ -341,7 +414,51 @@ const Canvas = () => {
             </button>
           </div>
         )}
+
+        {/* Endpoint Condition Warning Banner */}
+        {endpointWarning && (
+          <div style={{
+            position: 'absolute', bottom: '1.5rem',
+            left: '50%', transform: 'translateX(-50%)',
+            padding: '0.85rem 1.6rem',
+            borderRadius: '12px',
+            background: 'rgba(15, 23, 42, 0.95)',
+            border: '2px solid #ef4444',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.6), 0 0 15px rgba(239, 68, 68, 0.3)',
+            backdropFilter: 'blur(12px)',
+            color: '#fca5a5',
+            fontSize: '0.9rem',
+            fontWeight: 600,
+            maxWidth: '90%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            animation: 'slideUp 0.3s ease',
+            zIndex: 60,
+          }}>
+            <AlertOctagon size={20} color="#ef4444" style={{ minWidth: 20 }} />
+            <span>{endpointWarning}</span>
+            <button 
+              onClick={() => setEndpointWarning(null)} 
+              style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', marginLeft: 'auto' }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Siddhi Lakshana & Score Evaluation Modal */}
+      <SimulationResultModal
+        isOpen={evalModalOpen}
+        onClose={() => setEvalModalOpen(false)}
+        practicalName={activeCompoundName}
+        evaluation={currentEvaluation}
+        onReset={() => {
+          resetCanvas();
+          setEvalModalOpen(false);
+        }}
+      />
     </div>
   );
 };

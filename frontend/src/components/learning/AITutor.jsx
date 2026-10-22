@@ -6,7 +6,7 @@ import {
   FlaskConical, Flame, Award, MessageSquare, Volume2, VolumeX,
   ThumbsUp, ThumbsDown, Share2, RotateCcw, MoreHorizontal, SquarePen, Search
 } from 'lucide-react';
-import { askTutor } from '../../services/gemini';
+import { askTutor, rateInteraction } from '../../services/gemini';
 import { logUserActivity } from '../../utils/activityTracker';
 import './AITutor.css';
 
@@ -57,7 +57,7 @@ const renderInlineMarkdown = (text) => {
 /**
  * ChatGPT-Style Message Formatter with Callout Quotes & Ranking Badges
  */
-const FormattedChatGPTMessage = ({ text, onRegenerate }) => {
+const FormattedChatGPTMessage = ({ text, onRegenerate, interactionId, citations }) => {
   const [copied, setCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [liked, setLiked] = useState(false);
@@ -198,6 +198,27 @@ const FormattedChatGPTMessage = ({ text, onRegenerate }) => {
         })}
       </div>
 
+      {/* Classical Samhita / Kalpana Citation Pill (Task 4 RAG Grounding) */}
+      {citations && (
+        <div style={{
+          marginTop: '0.6rem',
+          marginBottom: '0.4rem',
+          padding: '0.35rem 0.75rem',
+          borderRadius: '8px',
+          background: 'rgba(16, 185, 129, 0.08)',
+          border: '1px solid rgba(16, 185, 129, 0.25)',
+          color: '#065f46',
+          fontSize: '0.78rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.45rem',
+          width: 'fit-content',
+        }}>
+          <BookOpen size={13} style={{ flexShrink: 0, color: '#059669' }} />
+          <span><strong>Classical Authority:</strong> {citations}</span>
+        </div>
+      )}
+
       {/* ChatGPT-style Bottom Action Toolbar */}
       <div className="chatgpt-action-toolbar">
         <button 
@@ -218,7 +239,14 @@ const FormattedChatGPTMessage = ({ text, onRegenerate }) => {
 
         <button 
           className={`toolbar-btn ${liked ? 'active-thumb' : ''}`} 
-          onClick={() => { setLiked(!liked); setDisliked(false); }} 
+          onClick={() => { 
+            const newLiked = !liked;
+            setLiked(newLiked); 
+            setDisliked(false);
+            if (newLiked && interactionId) {
+              rateInteraction(interactionId, 5);
+            }
+          }} 
           title="Good response"
         >
           <ThumbsUp size={14} />
@@ -226,7 +254,14 @@ const FormattedChatGPTMessage = ({ text, onRegenerate }) => {
 
         <button 
           className={`toolbar-btn ${disliked ? 'active-thumb' : ''}`} 
-          onClick={() => { setDisliked(!disliked); setLiked(false); }} 
+          onClick={() => { 
+            const newDisliked = !disliked;
+            setDisliked(newDisliked); 
+            setLiked(false);
+            if (newDisliked && interactionId) {
+              rateInteraction(interactionId, 1);
+            }
+          }} 
           title="Bad response"
         >
           <ThumbsDown size={14} />
@@ -462,7 +497,9 @@ const AITutor = ({
             if (s.id === activeSessionId) {
               const currentMsgs = [...s.messages];
               if (currentMsgs.length > 0) {
+                const prevMsg = currentMsgs[currentMsgs.length - 1];
                 currentMsgs[currentMsgs.length - 1] = { 
+                  ...prevMsg,
                   role: 'bot', 
                   text: chunkText 
                 };
@@ -477,7 +514,27 @@ const AITutor = ({
           }));
         },
         previousHistory,
-        currentExperiment?.title || activeSession.experimentTitle || ''
+        currentExperiment?.title || activeSession.experimentTitle || '',
+        ({ interactionId, citations }) => {
+          setSessions(prev => prev.map(s => {
+            if (s.id === activeSessionId) {
+              const currentMsgs = [...s.messages];
+              if (currentMsgs.length > 0) {
+                const prevMsg = currentMsgs[currentMsgs.length - 1];
+                currentMsgs[currentMsgs.length - 1] = {
+                  ...prevMsg,
+                  interactionId: interactionId || prevMsg.interactionId,
+                  citations: citations || prevMsg.citations,
+                };
+              }
+              return {
+                ...s,
+                messages: currentMsgs,
+              };
+            }
+            return s;
+          }));
+        }
       );
     } catch (error) {
       console.error(error);
@@ -754,6 +811,8 @@ const AITutor = ({
                     {msg.role === 'bot' ? (
                       <FormattedChatGPTMessage 
                         text={msg.text} 
+                        interactionId={msg.interactionId}
+                        citations={msg.citations}
                         onRegenerate={isLastBotMsg ? handleRegenerateLast : null} 
                       />
                     ) : (

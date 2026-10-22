@@ -31,21 +31,50 @@ const buildUserQuery = (id, role, collegeId) => {
   return query;
 };
 
-// @desc   Get all students in the admin's college and summary stats
+// @desc   Get all students in the admin's college with pagination and summary stats
 // @route  GET /api/admin/students
 // @access Private (Admin only)
 export const getStudents = async (req, res) => {
   try {
     const collegeId = req.user.collegeId;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const skip = (page - 1) * limit;
 
-    const students = await User.find({
+    const baseFilter = {
       collegeId,
       role: 'student',
-    }).sort({ createdAt: -1 });
+    };
 
-    const totalStudents = students.length;
-    const activeStudents = students.filter((s) => s.isActive).length;
+    if (req.query.status === 'active') {
+      baseFilter.isActive = true;
+    } else if (req.query.status === 'disabled') {
+      baseFilter.isActive = false;
+    }
+
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search.trim(), 'i');
+      baseFilter.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { studentId: searchRegex },
+      ];
+    }
+
+    const [allCollegeStudents, totalMatched, students] = await Promise.all([
+      User.find({ collegeId, role: 'student' }).select('isActive').lean(),
+      User.countDocuments(baseFilter),
+      User.find(baseFilter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ]);
+
+    const totalStudents = allCollegeStudents.length;
+    const activeStudents = allCollegeStudents.filter((s) => s.isActive).length;
     const disabledStudents = totalStudents - activeStudents;
+    const totalPages = Math.ceil(totalMatched / limit) || 1;
 
     return res.status(200).json({
       success: true,
@@ -53,6 +82,12 @@ export const getStudents = async (req, res) => {
         totalStudents,
         activeStudents,
         disabledStudents,
+      },
+      pagination: {
+        total: totalMatched,
+        page,
+        limit,
+        totalPages,
       },
       students,
     });
@@ -268,21 +303,54 @@ export const resetStudentPassword = async (req, res) => {
 // FACULTY CONTROLLERS (Persistent Database)
 // ==========================================
 
-// @desc   Get all faculty in the admin's college and summary stats
+// @desc   Get all faculty in the admin's college with pagination and summary stats
 // @route  GET /api/admin/faculty
 // @access Private (Admin only)
 export const getFaculty = async (req, res) => {
   try {
     const collegeId = req.user?.collegeId || process.env.COLLEGE_ID || 'COLLEGE_001';
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const skip = (page - 1) * limit;
 
-    const faculty = await User.find({
+    const baseFilter = {
       $or: [{ collegeId }, { collegeId: { $exists: false } }],
       role: 'faculty',
-    }).sort({ createdAt: -1 });
+    };
 
-    const totalFaculty = faculty.length;
-    const activeFaculty = faculty.filter((f) => f.isActive).length;
+    if (req.query.status === 'active') {
+      baseFilter.isActive = true;
+    } else if (req.query.status === 'disabled') {
+      baseFilter.isActive = false;
+    }
+
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search.trim(), 'i');
+      baseFilter.$and = [
+        {
+          $or: [
+            { name: searchRegex },
+            { email: searchRegex },
+            { facultyId: searchRegex },
+          ],
+        },
+      ];
+    }
+
+    const [allCollegeFaculty, totalMatched, faculty] = await Promise.all([
+      User.find({ $or: [{ collegeId }, { collegeId: { $exists: false } }], role: 'faculty' }).select('isActive').lean(),
+      User.countDocuments(baseFilter),
+      User.find(baseFilter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ]);
+
+    const totalFaculty = allCollegeFaculty.length;
+    const activeFaculty = allCollegeFaculty.filter((f) => f.isActive).length;
     const disabledFaculty = totalFaculty - activeFaculty;
+    const totalPages = Math.ceil(totalMatched / limit) || 1;
 
     return res.status(200).json({
       success: true,
@@ -290,6 +358,12 @@ export const getFaculty = async (req, res) => {
         totalFaculty,
         activeFaculty,
         disabledFaculty,
+      },
+      pagination: {
+        total: totalMatched,
+        page,
+        limit,
+        totalPages,
       },
       faculty,
     });
