@@ -1225,7 +1225,7 @@ const Admin = () => {
         <div className="video-modal-backdrop" onClick={closePlayer}>
           <div className="video-modal-content glass-panel" onClick={e => e.stopPropagation()}>
             <button className="close-btn" onClick={closePlayer}><X size={20} /></button>
-            <video src={playingRecording} controls autoPlay className="main-video-player" />
+            <video src={playingRecording} controls autoPlay preload="auto" playsInline className="main-video-player" />
           </div>
         </div>
       )}

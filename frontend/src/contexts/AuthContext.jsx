@@ -23,7 +23,8 @@ import { setupOrUpdateAdminInFirebase } from '../services/updateFirebaseAdmin';
 
 const AuthContext = createContext();
 
-const ADMIN_EMAIL = 'jthakre62@gmail.com';
+const ADMIN_EMAILS = ['jthakre62@gmail.com', 'admin@college.edu'];
+const isAdminEmailCheck = (email) => ADMIN_EMAILS.includes((email || '').toLowerCase().trim());
 const DEFAULT_COLLEGE_ID = 'COLLEGE_001';
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -105,9 +106,9 @@ export const AuthProvider = ({ children }) => {
     if (!firebaseUser) return null;
 
     const email = (firebaseUser.email || '').toLowerCase().trim();
-    const isAdminEmail = email === ADMIN_EMAIL.toLowerCase();
+    const isAdminEmail = isAdminEmailCheck(email);
     const cachedName = localStorage.getItem('ayurveda_user_name_' + email);
-    const resolvedName = customUsername || cachedName || firebaseUser.displayName || (isAdminEmail ? 'Jay Thakre' : email.split('@')[0]);
+    const resolvedName = customUsername || cachedName || firebaseUser.displayName || (isAdminEmail ? (email === 'admin@college.edu' ? 'College Administrator' : 'Jay Thakre') : email.split('@')[0]);
 
     // Check if user has already changed password previously
     const isPassAlreadyChanged = localStorage.getItem('ayurveda_pass_updated_' + email) === 'true' || isAdminEmail;
@@ -251,7 +252,7 @@ export const AuthProvider = ({ children }) => {
           throw new Error(errData.message || 'Invalid email or password');
         }
         if (res.status === 403) {
-          throw new Error(errData.message || 'Your account has been disabled.');
+          throw new Error(errData.message || errData.error || 'Your account has been disabled.');
         }
       }
     } catch (backendErr) {
@@ -273,16 +274,16 @@ export const AuthProvider = ({ children }) => {
         const isNetworkFailure = authError.code === 'auth/network-request-failed';
 
         // 1. Admin login fallback (handles initial setup, invalid credential, or network failure)
-        if (trimmedEmail === ADMIN_EMAIL.toLowerCase()) {
-          const expectedAdminPass = localStorage.getItem('ayurveda_account_pass_' + trimmedEmail) || 'Jay@1523';
-          const isAdminPassValid = password === expectedAdminPass || password === 'Jay@1523';
+        if (isAdminEmailCheck(trimmedEmail)) {
+          const expectedAdminPass = localStorage.getItem('ayurveda_account_pass_' + trimmedEmail) || (trimmedEmail === 'admin@college.edu' ? 'Admin@123456' : 'Jay@1523');
+          const isAdminPassValid = password === expectedAdminPass || password === 'Jay@1523' || password === 'Admin@123456';
 
           if (isNetworkFailure && isAdminPassValid) {
-            const adminName = customUsername || localStorage.getItem('ayurveda_user_name_' + trimmedEmail) || 'Jay Thakre';
+            const adminName = customUsername || localStorage.getItem('ayurveda_user_name_' + trimmedEmail) || (trimmedEmail === 'admin@college.edu' ? 'College Administrator' : 'Jay Thakre');
             const adminProfile = {
-              _id: 'admin_jay_thakre',
-              uid: 'admin_jay_thakre',
-              id: 'admin_jay_thakre',
+              _id: 'admin_' + trimmedEmail.replace(/[@.]/g, '_'),
+              uid: 'admin_' + trimmedEmail.replace(/[@.]/g, '_'),
+              id: 'admin_' + trimmedEmail.replace(/[@.]/g, '_'),
               email: trimmedEmail,
               name: adminName,
               displayName: adminName,
@@ -598,7 +599,7 @@ export const AuthProvider = ({ children }) => {
     setCurrentUser((prev) => ({ ...prev, ...updatedUser }));
   };
 
-  const isAdmin = currentUser?.role === 'admin' || (currentUser?.email || '').toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const isAdmin = currentUser?.role === 'admin' || isAdminEmailCheck(currentUser?.email);
   const isFaculty = currentUser?.role === 'faculty';
   const isFacultyOrAdmin = isAdmin || isFaculty;
   const isStudent = !isAdmin && !isFaculty;

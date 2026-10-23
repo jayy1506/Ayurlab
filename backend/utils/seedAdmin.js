@@ -11,35 +11,51 @@ dotenv.config();
 
 export const seedAdmin = async () => {
   try {
-    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@college.edu').toLowerCase().trim();
-    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
-    const adminName = process.env.ADMIN_NAME || 'College Administrator';
-    const collegeId = process.env.COLLEGE_ID || 'COLLEGE_001';
+    // 1. Primary admin from .env
+    const primaryAdminEmail = (process.env.ADMIN_EMAIL || 'jthakre62@gmail.com').toLowerCase().trim();
+    const primaryAdminPassword = process.env.ADMIN_PASSWORD || 'Jay@1523';
+    const primaryAdminName = process.env.ADMIN_NAME || 'Jay Thakre';
 
-    const existingAdmin = await User.findOne({ email: adminEmail });
+    // 2. Fallback system admin
+    const systemAdminEmail = 'admin@college.edu';
+    const systemAdminPassword = 'Admin@123456';
+    const systemAdminName = 'College Administrator';
 
-    if (!existingAdmin) {
-      try {
-        const createdAdmin = await User.create({
-          name: adminName,
-          email: adminEmail,
-          password: adminPassword,
-          role: 'admin',
-          collegeId,
-          isActive: true,
-          isDefaultPassword: false,
-        });
+    const adminsToSeed = [
+      { email: primaryAdminEmail, password: primaryAdminPassword, name: primaryAdminName },
+      { email: systemAdminEmail, password: systemAdminPassword, name: systemAdminName },
+    ];
 
-        console.log(`[SeedAdmin] Initial College Administrator created: ${createdAdmin.email} (College: ${collegeId})`);
-        return createdAdmin;
-      } catch (err) {
-        if (err.code === 11000) {
-          return await User.findOne({ email: adminEmail });
+    let seededAdmin = null;
+    for (const adm of adminsToSeed) {
+      let adminUser = await User.findOne({ email: adm.email });
+      if (!adminUser) {
+        try {
+          adminUser = await User.create({
+            name: adm.name,
+            email: adm.email,
+            password: adm.password,
+            role: 'admin',
+            collegeId,
+            isActive: true,
+            isDefaultPassword: false,
+          });
+          console.log(`[SeedAdmin] Administrator created: ${adminUser.email}`);
+        } catch (err) {
+          if (err.code === 11000) {
+            adminUser = await User.findOne({ email: adm.email });
+          }
         }
-        throw err;
+      } else {
+        // Guarantee admin account is always active
+        if (!adminUser.isActive) {
+          adminUser.isActive = true;
+          await adminUser.save();
+          console.log(`[SeedAdmin] Restored active status for admin: ${adminUser.email}`);
+        }
+        console.log(`[SeedAdmin] Administrator account verified: ${adminUser.email}`);
       }
-    } else {
-      console.log(`[SeedAdmin] Administrator account verified: ${existingAdmin.email}`);
+      if (!seededAdmin) seededAdmin = adminUser;
     }
 
     // Seed default Faculty account so faculty is always present on restart
@@ -66,7 +82,7 @@ export const seedAdmin = async () => {
       console.log(`[SeedAdmin] Faculty account verified: ${existingFaculty.email}`);
     }
 
-    return existingAdmin;
+    return seededAdmin;
   } catch (error) {
     console.error('[SeedAdmin Error]:', error.message);
     throw error;

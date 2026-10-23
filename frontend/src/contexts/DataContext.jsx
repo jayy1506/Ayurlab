@@ -1147,8 +1147,7 @@ const defaultExperiments = [
       "gandha": "Hingu",
       "matra": "1-2 gm",
       "anupana": "Warm water, Takra, Ghee"
-    },
-    "videoUrl": "/videos/Hingwastaka Churna Preparation Guide_720p_caption.mp4"
+    }
   },
   {
     "id": 7,
@@ -1481,8 +1480,7 @@ const defaultExperiments = [
       "rupa": "Smooth, Brownish colour",
       "rasa": "Katu, Kashaya",
       "matra": "3-4 tablets for chewing"
-    },
-    "videoUrl": "/videos/k.mp4"
+    }
   },
   {
     "id": 17,

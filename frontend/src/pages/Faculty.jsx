@@ -871,6 +871,8 @@ const Faculty = () => {
                 src={playingRecording.recordingUrl || (playingRecording.videoBlob ? URL.createObjectURL(playingRecording.videoBlob) : (playingRecording.blob ? URL.createObjectURL(playingRecording.blob) : ''))} 
                 controls 
                 autoPlay 
+                preload="auto"
+                playsInline
                 className="session-video"
                 style={{ width: '100%', borderRadius: '12px', background: '#000', maxHeight: '360px' }}
               />
