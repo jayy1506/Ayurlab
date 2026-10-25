@@ -50,6 +50,9 @@ COPY backend/ ./backend/
 # Copy compiled frontend distribution from builder stage
 COPY --from=builder /app/frontend/dist ./frontend/dist
 
+# Copy frontend source assets required by backend runtime (seedPracticals & simulationEvaluator)
+COPY frontend/src/ ./frontend/src/
+
 # Create uploads directory for proctored exam recordings
 RUN mkdir -p backend/uploads/exam_recordings && \
     chmod -R 755 backend/uploads

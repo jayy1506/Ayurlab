@@ -1,0 +1,69 @@
+name: Render Health & Availability Monitor
+
+on:
+  schedule:
+    # Runs every 30 minutes (conserves GitHub Actions free minutes while keeping instance monitored)
+    - cron: '15,45 * * * *'
+  workflow_dispatch: # Allows manual check from GitHub Actions tab
+
+jobs:
+  ping-service:
+    name: Health Check Probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Probe Render Health Endpoint
+        id: probe
+        run: |
+          TARGET_URL="${{ secrets.RENDER_APP_URL }}"
+          if [ -z "$TARGET_URL" ]; then
+            echo "::warning ::RENDER_APP_URL secret is not set. Please add your Render app URL in GitHub Secrets."
+            exit 0
+          fi
+
+          # Ensure /health suffix
+          CLEAN_URL="${TARGET_URL%/}"
+          if [[ "$CLEAN_URL" != */health ]]; then
+            PROBE_URL="${CLEAN_URL}/health"
+          else
+            PROBE_URL="$CLEAN_URL"
+          fi
+
+          echo "Pinging service health at: $PROBE_URL"
+          echo "Note: Allowing up to 90 seconds to tolerate Render free-tier cold-start wake-up."
+
+          # Up to 90s timeout for cold start
+          HTTP_STATUS=$(curl -s -L --max-time 90 -o response_body.json -w "%{http_code}" "$PROBE_URL" || echo "FAILED")
+
+          echo "Received HTTP Status: $HTTP_STATUS"
+          cat response_body.json || true
+          echo ""
+
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "status=healthy" >> $GITHUB_OUTPUT
+            echo "Service is healthy and responding."
+          else
+            echo "status=unhealthy" >> $GITHUB_OUTPUT
+            echo "http_code=$HTTP_STATUS" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Dispatch Alert Notification on Failure
+        if: failure() && steps.probe.outputs.status == 'unhealthy'
+        run: |
+          HTTP_CODE="${{ steps.probe.outputs.http_code }}"
+          TIMESTAMP=$(date -u +'%Y-%m-%d %H:%M:%SZ')
+          ALERT_MSG="🚨 **Render Service Alert: Down or Unresponsive!**%0A- **Timestamp:** $TIMESTAMP%0A- **Status Code:** $HTTP_CODE%0A- **Target:** ${{ secrets.RENDER_APP_URL }}/health%0A- **Diagnosis:** Service failed to return HTTP 200 within 90s. Check Render Dashboard for cold-start timeout, crash, or monthly free-hour exhaustion."
+
+          echo "Service is unreachable or degraded."
+
+          # Post to Discord / Slack if webhook is configured
+          if [ -n "${{ secrets.ALERT_WEBHOOK_URL }}" ]; then
+            echo "Sending alert to webhook..."
+            curl -X POST -H "Content-Type: application/json" \
+              -d "{\"content\": \"$ALERT_MSG\", \"text\": \"$ALERT_MSG\"}" \
+              "${{ secrets.ALERT_WEBHOOK_URL }}"
+          else
+            echo "::warning ::ALERT_WEBHOOK_URL is not set. Outage recorded in GitHub Actions workflow log."
+          fi

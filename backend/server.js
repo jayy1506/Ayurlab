@@ -97,8 +97,30 @@ app.use((req, res, next) => {
 
 // Enhanced Health check endpoint with database and resource diagnostics
 app.get("/health", (req, res) => {
-  // Minimal public health check – no sensitive info
-  res.json({ status: "ok" });
+  const dbStates = {
+    0: "disconnected",
+    1: "connected",
+    2: "connecting",
+    3: "disconnecting",
+  };
+  const dbStatus = dbStates[mongoose.connection.readyState] || "unknown";
+
+  const isHealthy = mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2;
+
+  const responseData = {
+    status: isHealthy ? "ok" : "degraded",
+    uptimeSeconds: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development",
+    database: dbStatus,
+    memory: {
+      rssMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+      heapUsedMb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    },
+  };
+
+  // Return HTTP 200 even if degraded during cold-starts so container doesn't restart continuously
+  res.status(200).json(responseData);
 });
 
 // Serve static files from the React frontend build (exempt from API rate limits)
@@ -142,28 +164,34 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 🤖 Keep-Alive Robot for Render Free Tier (Prevents 50s cold start)
+// 🤖 Keep-Alive Robot for Render Free Tier
+// Note: When Render puts an instance to sleep after 15m inactivity, the Node process freezes.
+// This loop keeps the process warm while active, but external triggers (like GitHub Actions or UptimeRobot)
+// are required to wake the instance up from a cold sleep.
 const selfPing = () => {
-  const url = process.env.RENDER_EXTERNAL_URL;
-  if (!url) return;
+  const rawUrl = process.env.RENDER_EXTERNAL_URL;
+  if (!rawUrl) return;
 
-  console.log(`[Keep-Alive Robot]: Pinging self at ${url}/health`);
+  const url = rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl}`;
+  const target = `${url.replace(/\/$/, "")}/health`;
+
+  logger.info(`[Keep-Alive Robot] Self-pinging ${target}`);
   import("https").then(({ get }) => {
-    get(`${url}/health`, (res) => {
-      console.log(`[Keep-Alive Robot]: Ping response status: ${res.statusCode}`);
+    get(target, (res) => {
+      logger.info(`[Keep-Alive Robot] Health response status: ${res.statusCode}`);
     }).on("error", (err) => {
-      console.error("[Keep-Alive Robot]: Ping failed:", err.message);
+      logger.warn(`[Keep-Alive Robot] Ping failed: ${err.message}`);
     });
   }).catch(err => {
-    console.error("[Keep-Alive Robot]: Failed to load https module:", err);
+    logger.error("[Keep-Alive Robot] Failed to load https module:", err);
   });
 };
 
-// Run ping every 10 minutes (600000 ms)
+// Run ping every 14 minutes (840000 ms) while active, if RENDER_EXTERNAL_URL is provided
 if (process.env.RENDER_EXTERNAL_URL) {
-  console.log("[Keep-Alive Robot]: Render environment detected. Initializing self-ping loop.");
+  logger.info("[Keep-Alive Robot] Render environment detected. Initializing keep-alive loop.");
   setTimeout(selfPing, 60000);
-  setInterval(selfPing, 600000);
+  setInterval(selfPing, 840000);
 }
 
 // Start Server and initialize Database & Seed Admin

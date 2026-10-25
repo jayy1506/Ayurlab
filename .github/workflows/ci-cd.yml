@@ -1,0 +1,81 @@
+name: CI/CD Pipeline & Render Deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    name: Run Test Suite & Build Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Clean Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Run Test Suite (Vitest)
+        run: npm test
+        env:
+          CI: true
+          NODE_ENV: test
+
+      - name: Verify Frontend Production Build
+        run: npm run build
+
+  security-audit:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Run npm audit
+        run: npm audit --audit-level=critical
+
+  deploy:
+    name: Trigger Safe Render Deployment
+    needs: [test-and-build, security-audit]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Trigger Render Deploy Hook
+        run: |
+          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            echo "::warning ::RENDER_DEPLOY_HOOK_URL secret is not set. Deployment hook skipped. Configure this in GitHub Repo Settings > Secrets."
+            exit 0
+          fi
+
+          echo "Triggering Render deployment via secured deploy hook..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}")
+          
+          if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 201 ]; then
+            echo "Render deployment triggered successfully (HTTP $HTTP_STATUS)."
+          else
+            echo "::error ::Render Deploy Hook returned HTTP status $HTTP_STATUS"
+            exit 1
+          fi
