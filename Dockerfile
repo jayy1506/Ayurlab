@@ -39,6 +39,7 @@ RUN apk add --no-cache curl
 
 # Copy dependency manifests
 COPY package*.json ./
+COPY frontend/package*.json ./frontend/
 COPY backend/package*.json ./backend/
 
 # Install only production dependencies for backend
@@ -62,7 +63,7 @@ EXPOSE 5000
 
 # Container Healthcheck against /health endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD curl -f http://localhost:5000/health || exit 1
+  CMD sh -c 'curl -f http://localhost:${PORT:-5000}/health || exit 1'
 
 # Start Ayurlab Backend Production Server
 CMD ["node", "backend/server.js"]

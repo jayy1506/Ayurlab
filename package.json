@@ -24,7 +24,6 @@
   },
   "dependencies": {
     "express-rate-limit": "^8.7.1",
-    "flutter": "^0.0.5",
     "helmet": "^8.3.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
@@ -32,6 +31,7 @@
   },
   "overrides": {
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "proxy-addr": "^2.0.8"
   }
 }
